@@ -35,6 +35,7 @@ kubectl apply -f .
 ```
 
 ## Configuration
+The following assumes you're using ingress-nginx 0.9.0 or newer. For a detailed description of the annotations used see https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication
 
 ### Example 1: Authentication
 The following example provides authentication for the application `my-app`.
@@ -48,12 +49,8 @@ metadata:
   name: my-app
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/auth-url: https://another-ldap.another.svc.cluster.local/auth
-    nginx.ingress.kubernetes.io/server-snippet: |
-      error_page 401 = @login;
-      location @login {
-        return 302 https://another-ldap.testmyldap.com/?protocol=$pass_access_scheme&callback=$host;
-      }
+    nginx.ingress.kubernetes.io/auth-url: https://<fqdn of the another-ldap-service (e.g. another-ldap.another.svc.cluster.local)>/auth
+    nginx.ingress.kubernetes.io/signin-url: https://<fqdn of the host configured for the another-ldap-ingress (e.g. another-ldap.examplec.om)>/?protocol=$pass_access_scheme&callback=$host
 spec:
   rules:
   - host: my-app.testmyldap.com
