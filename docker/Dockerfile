@@ -8,19 +8,22 @@ RUN apk --no-cache add build-base libffi-dev openssl-dev openldap-dev
 ENV USER=aldap \
     UID=10001 \
     GROUP=aldap \
-    GID=10001
+    GID=10001 \
+    PORT=9000
 ENV HOME=/home/$USER
 RUN addgroup -g $GID -S $GROUP && adduser -u $UID -S $USER -G $GROUP;
+EXPOSE $PORT
 
-COPY ./files/requirements.txt /tmp/requirements.txt
+COPY ./requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt --no-cache-dir
 
 WORKDIR $HOME
-COPY --chown=$UID:$GID ./files/ .
+COPY --chown=$UID:$GID ./service.sh .
 RUN chmod +x ./service.sh
-USER $UID:$GID
+COPY --chown=$UID:$GID ./src/ .
 
 ENV DEV_MODE=false \
     GUNICORN_CMD_ARGS=""
 
+USER $UID:$GID
 ENTRYPOINT [ "./service.sh" ]

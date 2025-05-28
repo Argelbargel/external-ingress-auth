@@ -194,4 +194,4 @@ def handle_exception(e):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', ssl_context="adhoc", port=9000, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=9000, debug=True, use_reloader=True)
