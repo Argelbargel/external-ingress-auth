@@ -21,6 +21,12 @@
                     <form action="{{ url_for('login', protocol=layout.protocol, callback=layout.callback) }}" method="POST">
                         <input type="text" name="username" placeholder="Username" aria-label="Username" autocomplete="off" required>
                         <input type="password" name="password" placeholder="Password" aria-label="Password" autocomplete="off" required>
+                        <input id="state" type="hidden" name="state" value="">
+                        <script>
+                            if (location.hash != '') {
+                                document.getElementById('state').value = location.hash;
+                            }
+                        </script>
                         <button type="submit" class="contrast">Login</button>
                     </form>
                 {% endif %}

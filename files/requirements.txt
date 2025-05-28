@@ -1,6 +1,7 @@
-flask==2.0.2
-Flask-Session==0.4.0
-pyopenssl==20.0.1
-python-ldap==3.4.0
-cachelib==0.2.0
-redis==4.1.2
+flask==2.3.3
+Flask-Session==0.8.0
+pyopenssl==25.1.0
+python-ldap==3.4.4
+cachelib==0.13.0
+redis==6.2.0
+gunicorn==22.0.0

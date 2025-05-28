@@ -51,6 +51,7 @@ def login():
     # Get inputs from the form
     username = request.form.get('username', default=None, type=str)
     password = request.form.get('password', default=None, type=str)
+    state = request.form.get('state', default='', type=str)
     if (username is None) or (password is None):
         bruteForce.addFailure()
         return redirect(url_for('index', protocol=protocol, callback=callback, alert=True))
@@ -64,7 +65,7 @@ def login():
         session['username'] = username
         session['groups'] = aldap.getUserGroups(username)
         if (protocol in ['http', 'https']) and callback:
-            return redirect(protocol+'://'+callback)
+            return redirect(protocol+'://'+ callback + state)
         return redirect(url_for('index'))
 
     # Authentication failed
@@ -193,4 +194,4 @@ def handle_exception(e):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=9000, ssl_context='adhoc', debug=False, use_reloader=False)
+    app.run(host='0.0.0.0', ssl_context="adhoc", port=9000, debug=True, use_reloader=False)
