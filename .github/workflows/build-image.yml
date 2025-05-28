@@ -10,12 +10,12 @@ permissions:
   packages: write
 
 concurrency:
-  group: build-image-${{ github.ref }}
+  group: build-image-${{github.ref}}
   cancel-in-progress: true
 
 env:
   IMAGE_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{github.repository}}
 
 jobs:
   build-image:
@@ -26,14 +26,14 @@ jobs:
       id: image-meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        images: ${{REGISTRY}}/${{IMAGE_NAME,,}}
 
     - name: Login to Github Packages
       uses: docker/login-action@v3
       with:
-        registry: ${{ env.IMAGE_REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        registry: ${{IMAGE_REGISTRY}}
+        username: ${{github.actor}}
+        password: ${{secrets.GITHUB_TOKEN}}
 
     - name: "Checkout repository"
       uses: actions/checkout@v4
@@ -45,5 +45,5 @@ jobs:
         push: true
         context: ./docker
         file: ./docker/Dockerfile
-        tags: ${{ steps.image-meta.outputs.tags }}
-        labels: ${{ steps.image-meta.outputs.labels }}
+        tags: ${{steps.image-meta.outputs.tags}}
+        labels: ${{steps.image-meta.outputs.labels}}
