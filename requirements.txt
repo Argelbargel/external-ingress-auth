@@ -4,4 +4,4 @@ pyopenssl==25.1.0
 python-ldap==3.4.4
 cachelib==0.13.0
 redis==6.2.0
-gunicorn==22.0.0
+gunicorn==23.0.0
