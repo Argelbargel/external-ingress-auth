@@ -11,7 +11,7 @@ on:
 
 env:
   IMAGE_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{github.repository}}
 
 jobs:
   build:
@@ -23,12 +23,12 @@ jobs:
 
     - name: Build an image from Dockerfile
       run: |
-        docker build -t ${{IMAGE_REGISTRY }}/${{IMAGE_NAME,,}}:${{ github.sha }} .
+        docker build -t ${{env.IMAGE_REGISTRY}}/${{env.IMAGE_NAME,,}}:${{ github.sha }} .
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@0.30.0
       with:
-        image-ref: '${{IMAGE_REGISTRY }}/${{IMAGE_NAME,,}}:${{ github.sha }}'
+        image-ref: '${{env.IMAGE_REGISTRY}}/${{env.IMAGE_NAME,,}}:${{ github.sha }}'
         format: 'template'
         template: '@/contrib/sarif.tpl'
         output: 'trivy-results.sarif'
