@@ -24,6 +24,6 @@ class Parameters:
             return value
 
         if type==bool:
-            return value=="True"
+            return value.lower() == 'true'
 
         return type(value)

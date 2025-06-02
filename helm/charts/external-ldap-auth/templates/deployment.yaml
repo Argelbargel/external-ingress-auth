@@ -1,0 +1,80 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "external-ldap-auth.name" . }}
+  namespace: "{{ .Release.Namespace }}"
+  labels: {{- include "external-ldap-auth.labels" (list . .Values.deployment.labels) | nindent 4 }}
+  annotations: 
+    {{- include "external-ldap-auth.annotations" (list . .Values.deployment.annotations) | nindent 4 }}  
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{ include "external-ldap-auth.labels.selectors" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "external-ldap-auth.labels.selectors" . | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml (tpl . $) | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      {{- with .Values.deployment.initContainers }}
+      initContainers: {{- toYaml (tpl . $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: external-ldap-auth
+          image: "{{.Values.image.repo}}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9000
+          env:
+          {{- range $name, $value := .Values.config.env }}
+          - name: {{ $name }}
+            value: {{ (tpl (toString $value) $ ) | quote }}
+          {{- end }}
+          {{- with .Values.config.envFrom }}
+          envFrom: {{- toYaml (tpl . $) | nindent 12 }}
+          {{- end }}
+          {{- with .Values.deployment.resources }}
+          resources: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              port: http
+              path: /health
+            initialDelaySeconds: 5
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              port: http
+              path: /health
+            initialDelaySeconds: 5
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 1
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.deployment.volumeMounts }}
+            {{- toYaml (tpl . $) | nindent 12 }}            
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- with .Values.deployment.volumes }}
+        {{- toYaml (tpl . $) | nindent 8 }}            
+        {{- end }}

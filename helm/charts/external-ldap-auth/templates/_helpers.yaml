@@ -1,0 +1,30 @@
+{{- define "external-ldap-auth.name" -}}
+    {{- template "external-ldap-auth.trim" (list (.Release.Name | lower) 27) }}-{{- template "external-ldap-auth.trim" (list (.Chart.Name | lower) 36) }}
+{{- end }}
+
+{{- define "external-ldap-auth.trim" }}
+{{- $value := kindIs "slice" . | ternary (index . 0) . }}
+{{- $len := kindIs "slice" . | ternary (index . 1) 32 }}
+{{- $value | trunc $len | trimSuffix "-" }}
+{{- end }}
+
+{{- define "external-ldap-auth.labels.selectors" -}}
+app.kubernetes.io/name: {{ .Chart.Name | trunc 63 | trimSuffix "-" | quote }}
+app.kubernetes.io/part-of: {{ .Release.Name }}
+{{- end }}
+
+
+{{- define "external-ldap-auth.labels" -}}
+{{ include "external-ldap-auth.labels.selectors" (index . 0) }}
+app.kubernetes.io/version:	{{ (index . 0).Chart.Version | quote }}
+app.kubernetes.io/managed-by: {{ (index . 0).Release.Service | quote }}
+{{- range $name, $value := merge (index . 1) (index . 0).Values.commonLabels }}
+{{ $name }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+
+{{- define "external-ldap-auth.annotations" -}}
+{{- range $name, $value := merge (index . 1) (index . 0).Values.commonAnnotations }}
+{{ $name }}: {{ $value | quote }}
+{{- end }}
+{{- end }}

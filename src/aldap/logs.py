@@ -5,27 +5,23 @@ from aldap.parameters import Parameters
 
 
 class Logs:
-
-    def __init__(self, objectName:str, includeRequestIP:bool=True):
+    def __init__(self, objectName:str):
         self.param = Parameters()
         self.http = HTTP()
 
         self.objectName = objectName
-        self.level = self.param.get('LOG_LEVEL', default='INFO')
-        self.format = self.param.get('LOG_FORMAT', default='JSON')
-        self.includeRequestIP = includeRequestIP
+        self.level = self.param.get('LOG_LEVEL', default='INFO').upper()
+        self.format = self.param.get('LOG_FORMAT', default='JSON').upper()
 
-    def __print__(self, level:str, extraFields:dict):
+    def __print__(self, level:str, extraFields:dict, includeRequestIP:bool):
         fields = {
             'date': datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             'level': level,
             'objectName': self.objectName,
-            # 'base-url': self.http.getRequestBaseURL(),
-            # 'referrer': self.http.getRequestReferrer()
         }
 
         # Include request IP
-        if self.includeRequestIP:
+        if includeRequestIP:
             fields['ip'] = self.http.getRequestIP()
 
         # Include extra fields custom by the user
@@ -37,18 +33,18 @@ class Logs:
         else:
             print(' - '.join(map(str, fields.values())))
 
-    def error(self, extraFields:dict=None):
+    def error(self, extraFields:dict=None, includeRequestIP:bool=True):
         if self.level in ['DEBUG', 'INFO', 'WARNING', 'ERROR']:
-            self.__print__('ERROR', extraFields)
+            self.__print__('ERROR', extraFields, includeRequestIP)
 
-    def warning(self, extraFields:dict=None):
+    def warning(self, extraFields:dict=None, includeRequestIP:bool=True):
         if self.level in ['DEBUG', 'INFO', 'WARNING']:
-            self.__print__('WARNING', extraFields)
+            self.__print__('WARNING', extraFields, includeRequestIP)
 
-    def info(self, extraFields:dict=None):
+    def info(self, extraFields:dict=None, includeRequestIP:bool=True):
         if self.level in ['DEBUG', 'INFO']:
-            self.__print__('INFO', extraFields)
+            self.__print__('INFO', extraFields, includeRequestIP)
 
-    def debug(self, extraFields:dict=None):
+    def debug(self, extraFields:dict=None, includeRequestIP:bool=True):
         if self.level in ['DEBUG']:
-            self.__print__('DEBUG', extraFields)
+            self.__print__('DEBUG', extraFields, includeRequestIP)

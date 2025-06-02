@@ -1,20 +1,24 @@
 from flask import Flask
-from flask import request, session, render_template, redirect, url_for
-from flask_session import Session
+from flask import abort, request, render_template
 from werkzeug.exceptions import HTTPException
-from datetime import timedelta
-from tempfile import gettempdir
 from aldap.logs import Logs
 from aldap.bruteforce import BruteForce
 from aldap.parameters import Parameters
 from aldap.aldap import Aldap
-from aldap.prometheus import Prometheus
+from random import SystemRandom
+from string import ascii_letters, digits
+from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter
 
 # --- Parameters --------------------------------------------------------------
 param = Parameters()
+PAGE_FOOTER = param.get('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ldap-auth" target="_blank">Powered by External LDAP Authentication</a></small>', str)
+
+# --- LDAP-Connection ---------------------------------------------------------
+ldap = Aldap(param.get('LDAP_ENDPOINT', default=''), param.get('LDAP_BIND_DN'), param.get('LDAP_SEARCH_BASE'), param.get('LDAP_SEARCH_FILTER'), param.get('LDAP_MANAGER_DN'), param.get('LDAP_MANAGER_PASSWORD'))
 
 # --- Brute Force -------------------------------------------------------------
-bruteForce = BruteForce()
+bruteForce = BruteForce(param.get('BRUTE_FORCE_PROTECTION_ENABLED', False, bool), param.get('BRUTE_FORCE_MAX_FAILURE_COUNT', 5, int), param.get('BRUTE_FORCE_EXPIRATION_SECONDS', 60, int))
 
 # --- Logging -----------------------------------------------------------------
 logs = Logs('main')
@@ -22,165 +26,64 @@ logs = Logs('main')
 # --- Flask -------------------------------------------------------------------
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY=param.get('FLASK_SECRET_KEY', 'Change me from env variables!')
+    SECRET_KEY=param.get('FLASK_SECRET_KEY', ''.join(SystemRandom().choice(ascii_letters + digits) for _ in range(16)), str)
 )
-
-# Flask-Session module
-SESSION_TYPE = 'filesystem'
-SESSION_FILE_DIR = gettempdir()
-SESSION_USE_SIGNER = True
-SESSION_COOKIE_NAME = 'another-ldap'
-SESSION_COOKIE_DOMAIN = param.get('COOKIE_DOMAIN', None)
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = True
-PERMANENT_SESSION_LIFETIME = timedelta(days=param.get('PERMANENT_SESSION_LIFETIME', 7, int))
-SESSION_COOKIE_SAMESITE = 'Lax'
+metrics = PrometheusMetrics(app, export_defaults=False)
+authentication_failures = Counter('authentication_failures', 'Failed authentication requests', ['username'])
+authorization_failures = Counter('authorization_failures', 'Failed authorization requests', ['username', 'groups', 'users'])
+blocked_ips = Counter('blocked_ips', 'IPs blocked by bruteforce-protection', ['ip'])
 app.config.from_object(__name__)
-Session(app)
 
 
 # --- Routes ------------------------------------------------------------------
-@app.route('/login', methods=['POST'])
-def login():
-    logs.debug({'message':'/login requested.'})
-
-    # Get return page to redirect the user after successful login
-    protocol = request.args.get('protocol', default='', type=str)
-    callback = request.args.get('callback', default='', type=str)
-
-    # Get inputs from the form
-    username = request.form.get('username', default=None, type=str)
-    password = request.form.get('password', default=None, type=str)
-    state = request.form.get('state', default='', type=str)
-    if (username is None) or (password is None):
-        bruteForce.addFailure()
-        return redirect(url_for('index', protocol=protocol, callback=callback, alert=True))
-
-    # Authenticate user
-    aldap = Aldap()
-    if aldap.authentication(username, password):
-        logs.info({'message':'Login: Authentication successful, adding user and groups to the Session.'})
-        prometheus = Prometheus()
-        prometheus.addLastConnection(username)
-        session['username'] = username
-        session['groups'] = aldap.getUserGroups(username)
-        if (protocol in ['http', 'https']) and callback:
-            return redirect(protocol+'://'+ callback + state)
-        return redirect(url_for('index'))
-
-    # Authentication failed
-    logs.warning({'message': 'Login: Authentication failed, invalid credentials.'})
-    bruteForce.addFailure()
-    return redirect(url_for('index', protocol=protocol, callback=callback, alert=True))
-
-
-@app.route('/auth', methods=['GET'])
-def auth():
-    logs.debug({'message':'/auth requested.'})
-
-    # Basic Auth request
-    if request.authorization:
-        logs.debug({'message':'Basic-Auth requested.'})
-        username = request.authorization.username
-        password = request.authorization.password
-        if not username or not password:
-            return 'Unauthorized', 401
-
-        aldap = Aldap()
-        if aldap.authentication(username, password):
-            logs.info({'message':'Basic-Auth: Authentication successful.'})
-            groups = aldap.getUserGroups(username)
-            authorization, matchedGroups = aldap.authorization(username, groups)
-
-            if authorization:
-                logs.info({'message':'Basic-Auth: Authorization successful.'})
-                prometheus = Prometheus()
-                prometheus.addLastConnection(username)
-                return 'Authorized', 200, [('x-username', username),('x-groups', ",".join(matchedGroups))]
-
-            logs.warning({'message': 'Basic-Auth: Authorization failed.'})
-            return 'Unauthorized', 401
-
-        logs.warning({'message': 'Basic-Auth: Authentication failed.'})
-        return 'Unauthorized', 401
-
-    # Session auth request
-    logs.debug({'message':'Session requested.'})
-    if ('username' in session) and ('groups' in session):
-        logs.info({'message':'Session: Authentication successful.'})
-        aldap = Aldap()
-        authorization, matchedGroups = aldap.authorization(session['username'], session['groups'])
-
-        if authorization:
-            logs.info({'message':'Session: Authorization successful.'})
-            prometheus = Prometheus()
-            prometheus.addLastConnection(session['username'])
-            return 'Authorized', 200, [('x-username', session['username']),('x-groups', ",".join(matchedGroups))]
-
-        logs.warning({'message': 'Session: Authorization failed.'})
-        return 'Unauthorized', 401
-
-    logs.warning({'message': 'Session: Authentication failed.'})
-    return 'Unauthorized', 401
-
-
-@app.route('/logout', methods=['GET', 'POST'])
-def logout():
-    logs.debug({'message':'/logout requested.'})
-    try:
-        session.clear()
-    except KeyError:
-        pass
-    return redirect(url_for('index'))
-
-
 @app.route('/', methods=['GET'])
-def index():
-    logs.debug({'message':'/ requested.'})
-    layout = {
-        'metadata': {
-            'title': param.get('METADATA_TITLE', 'Another LDAP', str),
-            'description': param.get('METADATA_DESCRIPTION', '', str),
-            'footer': param.get('METADATA_FOOTER', 'Powered by Another LDAP', str)
-        },
-        'authenticated': False,
-        'username': '',
-        'protocol': '',
-        'callback': '',
-        'alert': ''
-    }
-
-    if ('username' in session) and ('groups' in session):
-        layout['authenticated'] = True
-        layout['username'] = session['username']
-
-    # Get return page to redirect the user after successful login
-    layout['protocol'] = request.args.get('protocol', default='', type=str)
-    layout['callback'] = request.args.get('callback', default='', type=str)
-
-    # Alerts for the user UI
-    if 'alert' in request.args:
-        layout['alert'] = 'Authentication failed, invalid username or password.'
-    if layout['authenticated'] and layout['protocol'] and layout['callback']:
-        layout['alert'] = 'Authorization failed, invalid LDAP groups.'
-
-    return render_template('login.html', layout=layout)
-
-
-@app.before_request
-def beforeAll():
-    logs.debug({'message':'Before-all.'})
+@metrics.counter('auth_requests', 'Number of auth requests')
+def auth():
     if bruteForce.isIpBlocked():
-        return 'Unauthorized', 401
+        return abort(429)
+
+    username = None
+    password = None
+
+    if not request.authorization:
+        logs.debug({'message':'missing authorization-header'})
+        return abort(401)
+
+    logs.debug({'message':'/basic-auth: authentication requested.'})
+    username = request.authorization.username
+    password = request.authorization.password
+
+    if not ldap.authenticate(username, password):
+        logs.warning({'message': 'Authentication failed', 'username': username})
+        authentication_failures.labels(username=username).inc()
+        if bruteForce.addRequest():
+            blocked_ips.labels(ip=bruteForce.getRequestIP()).inc()
+        return abort(401)
+
+
+    allowed_users = param.get('LDAP_ALLOWED_USERS', default=None, type=str, onlyEnv=False)
+    allowed_groups = param.get('LDAP_ALLOWED_GROUPS', default=None, type=str, onlyEnv=False)
+    cond_groups = param.get('LDAP_CONDITIONAL_GROUPS', default='or', type=str, onlyEnv=False).lower()
+    cond_users_groups = param.get('LDAP_CONDITIONAL_USERS_GROUPS', default='or', type=str, onlyEnv=False).lower()
+    authorization, matchedGroups = ldap.authorize(username, allowed_users, allowed_groups, cond_groups, cond_users_groups)
+    if not authorization:
+        logs.warning({'message': 'Authorization failed', 'username': username})
+        authorization_failures.labels(username=username, groups=allowed_groups, users=allowed_users).inc()
+        return abort(403)
+
+    logs.debug({'message':'Authorization successful', 'username': username, 'groups': matchedGroups})
+    return render_response(200, "Authorized", "You are authorized to access the requested resource", headers=[('x-username', username),('x-groups', ",".join(matchedGroups))])
+
+@app.route('/health', methods=['GET'])
+def health():
+    if not ldap.health():
+        return abort(503)
+    return render_response(200, "Healthy", "External LDAP Authentication is healthy")
+
 
 
 @app.after_request
 def afterAll(response):
-    logs.debug({'message':'After-all.'})
-    if response.status_code == 401:
-        bruteForce.addFailure() # Increase Brute force failures
-    if 'username' not in session:
-        session.clear() # Remove Session file and cookie
     response.headers['Server'] = '' # Remove Server header
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
@@ -189,8 +92,25 @@ def afterAll(response):
 
 @app.errorhandler(HTTPException)
 def handle_exception(e):
-    logs.error({'message': 'Exception.', 'code': e.code, 'name': e.name, 'description': e.description})
-    return 'Not Found', 404
+    if e.code not in [401, 403, 404, 405, 429]:
+        logs.error({'message': 'an error occurred while processing a request', 'path': request.path, 'code': e.code, 'name': e.name, 'description': e.description})
+
+    return render_response(e.code, e.name, e.description, "An Error Occurred While Processing Your Request") 
+
+
+def render_response(status_code, title, message, error = None, headers = []):
+    layout = {
+        'error': error,
+        'realm': param.get('AUTH_REALM', 'LDAP Authentication', str, False),
+        'title': title,
+        'message': message,
+        'footer': PAGE_FOOTER
+    }
+
+    if status_code == 401:
+        headers.append( ('WWW-Authenticate', 'Basic realm=' + layout["realm"]))
+
+    return render_template('page.html', layout=layout), status_code, headers
 
 
 if __name__ == '__main__':

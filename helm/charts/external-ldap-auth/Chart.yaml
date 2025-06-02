@@ -1,0 +1,23 @@
+apiVersion: v2
+type: application
+name: LDAP-Auth-Service
+description: LDAP-Auth-Service provides Authentication and Authorization for your applications running in Kubernetes.
+version: 0.1.0
+appVersion: 0.1.0
+keywords:
+- authentication
+- authorization
+- ldap
+- ingress
+home: https://argelbargel.github.io/ldap-auth-service/
+sources:
+- https://github.com/Argelbargel/ldap-auth-service/
+maintainers:
+- name: Argelbargel
+  url: https://github.com/Argelbargel
+annotations:
+  artifacthub.io/images: |
+    - name: ldap-auth-service
+      image: ghcr.io/argelbargel/ldap-auth-service:v0.12.1
+  artifacthub.io/recommendations: |
+    - url: https://kubernetes.github.io/ingress-nginx

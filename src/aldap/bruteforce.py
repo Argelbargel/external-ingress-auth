@@ -4,18 +4,22 @@ from aldap.http import HTTP
 from aldap.parameters import Parameters
 
 class BruteForce:
-
-    def __init__(self):
+    def __init__(self, enabled:bool, max_failures:int, expiration:int):
         self.param = Parameters()
         self.http = HTTP()
         self.logs = Logs(self.__class__.__name__)
 
         self.database = {}
-        self.enabled = self.param.get('BRUTE_FORCE_PROTECTION', False, bool)
-        self.expirationSeconds = self.param.get('BRUTE_FORCE_EXPIRATION', 10, int)
-        self.blockAfterFailures = self.param.get('BRUTE_FORCE_FAILURES', 3, int)
+        self.enabled = enabled
+        self.blockAfterFailures = max_failures
+        self.expirationSeconds = expiration
+        if (self.enabled):
+            self.logs.info({'message':'brute-force-protection is enabled', 'failures': self.blockAfterFailures, 'expiration': self.expirationSeconds}, False)
 
-    def addFailure(self):
+    def getRequestIP(self):
+        return self.http.getRequestIP()
+
+    def addRequest(self):
         '''
             Increase IP failure
         '''
@@ -23,7 +27,7 @@ class BruteForce:
         if not self.enabled:
             return False
 
-        ip = self.http.getRequestIP()
+        ip = self.getRequestIP()
 
         # Check if this is the first time that the IP will be in the database
         if ip not in self.database:
@@ -35,7 +39,7 @@ class BruteForce:
             if self.database[ip]['blockUntil'] < datetime.now():
                 self.logs.debug({'message':'IP failure counter expired, removing IP...', 'ip': ip})
                 del(self.database[ip])
-                self.addFailure()
+                self.addRequest()
                 return False
 
             # The IP is already in the database, increase the failure counter
@@ -46,6 +50,7 @@ class BruteForce:
             if self.database[ip]['counter'] >= self.blockAfterFailures:
                 self.database[ip]['blockUntil'] = datetime.now() + timedelta(seconds=self.expirationSeconds)
                 self.logs.warning({'message':'IP blocked.', 'ip': ip, 'blockUntil': str(self.database[ip]['blockUntil'])})
+                return True
 
         return False
 
@@ -57,7 +62,7 @@ class BruteForce:
         if not self.enabled:
             return False
 
-        ip = self.http.getRequestIP()
+        ip = self.getRequestIP()
 
         if ip not in self.database:
             self.logs.debug({'message':'The IP is not in the database and is not blocked.', 'ip': ip})

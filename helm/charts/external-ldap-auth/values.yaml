@@ -1,0 +1,80 @@
+# -- common labels for all resources deployed by this chart
+commonLabels: {}
+# -- common annotations for all resources deployed by this chart
+commonAnnotations: {}
+
+config:
+  env:
+    # -- the ldap server used to authenticate and authorize users
+    LDAP_ENDPOINT: "https://localhost:636"
+    # -- the ldap bind-dn to used to authenticate users
+    LDAP_BIND_DN: 'cn={username},{{ .Values.config.env.LDAP_SEARCH_BASE }}'
+    # -- the ldap search-base used to search for users to determine their group membership
+    LDAP_SEARCH_BASE: "<search-base>"
+    # -- the ldap search-filter used to search for users to determine their group membership
+    LDAP_SEARCH_FILTER: "(sAMAccountName={username})"
+    # -- enable/disable brute-force-protection when authenticating users
+    BRUTE_FORCE_PROTECTION_ENABLED: true
+    # -- number of failed authentication-attempts after which further requests are blocked
+    BRUTE_FORCE_MAX_FAILURE_COUNT: 5
+    # -- window within which attempts get logged and for which further requests will be blocked 
+    BRUTE_FORCE_EXPIRATION_SECONDS: 60
+    # -- log-level with which to log to the console
+    LOG_LEVEL: "INFO"
+    # -- log-format with which to log
+    LOG_FORMAT: "JSON"
+  # -- further configuration-sources (e.g. secrets for manager-dn and password)
+  envFrom: []
+
+image:
+  # -- overrides the image-repo for the deployed container-image 
+  repo: "ghcr.io/argelbargel/external-ldap-auth"
+  # -- overrides the image-tag for the deployed container-image 
+  # @default -- .Chart.AppVersion
+  tag:
+  pullPolicy: IfNotPresent
+  # -- image-pull-secrets
+  pullSecrets: []
+
+deployment:
+  # -- additional labels specific to the deployment resource
+  labels: {}
+  # -- additional annotations specific to the deployment resource
+  annotations: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 128Mi
+  # -- initContainers for the deployment
+  initContainers: []
+  # -- additional volume mounts for the external-ldap-auth-container
+  volumeMounts: []
+  # -- additional volumes for the deployment
+  volumes: []
+
+service:
+  type: ClusterIP
+  # -- additional labels specific to the service resource
+  labels: {}
+  # -- additional annotations specific to the service resource
+  annotations: {}
+
+serviceMonitor:
+  enabled: false
+  # -- additional labels specific to the service-monitor resource
+  labels: {}
+  # -- additional annotations specific to the service-monitor resource
+  annotations: {}
+
+ingress:
+  enabled: false
+  # -- additional labels specific to the ingress resource
+  labels: {}
+  # -- additional annotations specific to the ingress resource
+  annotations: {}
+  host: ""
+  tls:
+    enabled: false
+    secretName: ""

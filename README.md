@@ -1,163 +1,136 @@
-# Another LDAP
-Another LDAP is a form-based authentication for Active Directory / LDAP server.
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/external-ldap-auth)](https://artifacthub.io/packages/search?repo=external-ldap-auth)
+[![release](https://img.shields.io/github/v/release/argelbargel/external-ldap-auth)](https://github.com/argelbargel/external-ldap-auth/releases)
+[![license](https://img.shields.io/badge/license-MIT-green)](https://github.com/argelbargel/external-ldap-auth/blob/master/LICENSE)
 
-Another LDAP provides Authentication and Authorization for your applications running on Kubernetes.
+# External LDAP Authentication
 
-**Another LDAP** works perfect with **NGINX ingress controller** via ([External OAUTH Authentication](https://kubernetes.github.io/ingress-nginx/examples/auth/oauth-external-auth/)), **HAProxy** ([haproxy-auth-request](https://github.com/TimWolla/haproxy-auth-request)) or any webserver/reverse proxy with authorization based on the result of a subrequest.
+External LDAP Authentication provides an external authentication-service for Kubernetes Ingress Controllers which allows to authenticate and authorize users via LDAP-Servers.
 
-[![Docker image](https://img.shields.io/badge/Docker-image-blue.svg)](https://github.com/dignajar/another-ldap/pkgs/container/another-ldap)
-[![Kubernetes YAML manifests](https://img.shields.io/badge/Kubernetes-manifests-blue.svg)](https://github.com/dignajar/another-ldap/tree/master/kubernetes)
-[![codebeat badge](https://codebeat.co/badges/f57de995-ca62-49e5-b309-82ed60570324)](https://codebeat.co/projects/github-com-dignajar-another-ldap-master)
-[![release](https://img.shields.io/github/v/release/dignajar/another-ldap.svg)](https://github.com/dignajar/another-ldap/releases)
-[![license](https://img.shields.io/badge/license-MIT-green)](https://github.com/dignajar/another-ldap/blob/master/LICENSE)
-
-![Alt text](another-ldap.png?raw=true "Another LDAP")
+**External LDAP Authentication** works perfect with **NGINX ingress controller** via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
 ## Features
+
 - Authentication and Authorization for applications.
 - Authorization via LDAP groups, supports regex in groups list.
 - Supports protocols `ldap://` and `ldaps://`.
-- Enabled by design TLS via self-signed certificate.
 - Supports configuration via headers or via environment variables.
 - HTTP response headers with username and matched groups for the backend.
 - Brute force protection.
 - Log format in Plain-Text or JSON.
 
 ## Installation
-- Clone this repository or download the manifests from the directory `kubernetes`.
-- Edit the ingress, config-map and secrets with your configuration.
-- ALDAP is installed in the namespace `another`.
 
-```
-git clone https://github.com/dignajar/another-ldap.git
-cd another-ldap/kubernetes
-kubectl apply -f .
-```
+The easiest way to install the External LDAP Authentication service in your Kubernetes cluster is to use the provided [Helm chart](./helm/README.md).
 
 ## Configuration
+
+### Environment Variables
+
+The service reads it's configuration from the following environment variables:
+
+| Variable         | Required/Default-Value | Description                  |
+|------------------|------------------------|------------------------------|
+| LDAP_ENDPOINT    | required               | specifies the uri to the ldap-server (e.g. ldaps://example.com:636)            |
+| LDAP_BIND_DN     | required               | specifies the ldap-query used to authenticate an user. Must contain the placeholder `{username}` which is replaced by the username (e.g. `cn={username},cn=Users,dn=example,dn=com`) |
+| LDAP_SEARCH_BASE | required               | specifies the base-query used to search for users when determining their group membership (e.g. `cn=Users,dn=example,dn=com`) |
+| LDAP_SEARCH_FILTER | `(sAMAccountName={username})` | specifies the filter used to query users when determing their group membership. Must contain the placeholder `{username}` which is replaced with the given username when authenticating |
+| LDAP_MANAGER_DN | required | specifies the User-DN used to query the LDAP-server to determine group-membership (e.g. `cn=manager,dn=Users,dn=example,dn.com`) |
+| LDAP_MANAGER_PASSWORD | required | specified the Password for the Manager-User given in LDAP_MANAGER_DN |
+| BRUTE_FORCE_PROTECTION_ENABLED | `true` | enables/disables the brute-force-protection which prevents too many login-attempts |
+| BRUTE_FORCE_PROTECTION_MAX_FAILURE_COUNT | `5` | specifies after how many failed login attempts the IP is blocked by the protection |
+| BRUTE_FORCE_PROTECTION_EXPIRATION_SECONDS | `60` | specifies the time window within which failed login attempts are counted and for how long an IP gets blocked |
+| TLS_CERT | optional | specifies the path to the certificate used for TLS/HTTPS. If no certificate is specified, the service communicates via unsecured HTTP |
+| TLS_KEY | optional | specifies the key for the certificate specified in TLS_CERT  |
+| GUNICORN_CMD_ARGS | optional | allows you to specify custom arguments for the [gunicorn-server](https://gunicorn.org/) used by the service |
+| PAGE_FOOTER | optional | specifies the HTML in the footer of the error-pages rendered by the service. To disable the footer, set `PAGE_FOOTER=""` |
+
+### Headers
+
+The following options are either configured using environment variables or by configuring the ingress to pass them as HTTP-headers. If the environment variable is present it always take precedence and headers are ignored:
+
+| Variable           | Header     | Default-Value       | Description                                  |
+|--------------------|------------|---------------------|----------------------------------------------|
+| AUTH_REALM         | Auth-Realm | LDAP Authentication | the Basic Auth Realm returned by the service |
+| LDAP_ALLOWED_GROUPS| Ldap-Allowed-Groups |            | comma-separated list of groups the user must be member of to be allowed access. The given list is matched against the  CNs of the users ldap-groups (e.g. `groupA,groupB` matches `cn=groupA,cn=Users,dn=example,dn=com` and `cn=something,cn=groupB,dn=example,dn=com`) |
+| LDAP_ALLOWED_USERS | Ldap-Allowed-Users |             | comma-separated lust of users the current user must be in to be allowed access |
+| LDAP_CONDITIONAL_GROUPS | Ldap-Conditional-Groups | `or` | specifies whether the user must be in any group (`or`) or all groups (`and`) |
+| LDAP_CONDITIONAL_USERS_GROUPS | Ldap-Conditional-User-Groups | `or` | specifies whether both the given user- and group-requirement must be met (`and`) or if access is granted when either the user or it's group matches (`or`) |
+
+## Usage
+
+After installing the service in your cluster you have to configure your Ingress-resource to use the service for external authentication. [Nginx Ingress Controllor provides a simple example for this setup](https://kubernetes.github.io/ingress-nginx/examples/auth/external-auth/).
+
 The following assumes you're using ingress-nginx 0.9.0 or newer. For a detailed description of the annotations used see https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication
 
-### Example 1: Authentication
-The following example provides authentication for the application `my-app`.
-- The authentication validates username and password.
+### Authentication
 
-```
+For simple user-authentication without additional authorization restrictions to specific groups or users, you simple add the annotation `nginx.ingress.kubernetes.io/auth-url` to your ingress:
+
+```yaml
 ---
 kind: Ingress
-apiVersion: networking.k8s.io/v1
 metadata:
-  name: my-app
+  name: external-auth-ingress
+  namespace: default
   annotations:
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/auth-url: https://<fqdn of the another-ldap-service (e.g. another-ldap.another.svc.cluster.local)>/auth
-    nginx.ingress.kubernetes.io/signin-url: https://<fqdn of the host configured for the another-ldap-ingress (e.g. another-ldap.examplec.om)>/?protocol=$pass_access_scheme&callback=$host
+    nginx.ingress.kubernetes.io/auth-url: <url to the service>
+    # optional: add this if you want to pass the name of the authenticated user to the secured service
+    nginx.ingress.kubernetes.io/auth-response-headers: x-user
 spec:
   rules:
-  - host: my-app.testmyldap.com
+  - host: secured-service.example.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
-          service:
-            name: my-app
-            port:
+          service: 
+            name: secured-service
+            port: 
               number: 80
 ```
 
-### Example 2: Authentication and Authorization
-The following example provides authentication and authorization for the application `my-app`.
-- The authentication validates username and password.
-- The authorization validates if the user has the LDAP group `DevOps production environment`.
+### Authorization
 
-```
+If you want to restrict access to specific users or groups the configuration of the ingress is a bit more involved. Besides configuring the url of the auth-service you have to specify the restriction in a ConfigMap:
+
+```yaml
 ---
 kind: Ingress
-apiVersion: networking.k8s.io/v1
 metadata:
-  name: my-app
+  name: external-auth-ingress
+  namespace: default
   annotations:
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/auth-url: https://another-ldap.another.svc.cluster.local/auth
-    nginx.ingress.kubernetes.io/auth-snippet: |
-      proxy_set_header Ldap-Allowed-Groups "DevOps production environment";
-    nginx.ingress.kubernetes.io/server-snippet: |
-      error_page 401 = @login;
-      location @login {
-        return 302 https://another-ldap.testmyldap.com/?protocol=$pass_access_scheme&callback=$host;
-      }
-spec:
+    nginx.ingress.kubernetes.io/auth-url: <url to the service>
+    nginx.ingress.kubernetes.io/auth-proxy-set-headers: default/auth-headers
+    # optional: add this if you want to pass the name and groups of the authenticated user to the secured service
+    nginx.ingress.kubernetes.io/auth-response-headers: x-user, x-groups
+  spec:
   rules:
-  - host: my-app.testmyldap.com
+  - host: secured-service.example.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
-          service:
-            name: my-app
-            port:
+          service: 
+            name: secured-service
+            port: 
               number: 80
-```
 
-### Example 3: Authentication, Authorization and response headers
-The following example provides authentication and authorization for the application `my-app` and calls the application with the headers `x-username` and `x-groups`.
-- The authentication validates username and password.
-- The authorization validates if the user has one of the following LDAP groups `DevOps production environment` or `DevOps QA environment`.
-- Nginx will return the header `x-username` to the application that contains the username authenticated.
-- Nginx will return the header `x-groups` to the application that contains the matched groups for the username authenticated.
-
-With the headers you can do increase the authorization in the application or display the user logged.
-
-```
 ---
-kind: Ingress
-apiVersion: networking.k8s.io/v1
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: my-app
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/auth-url: https://another-ldap.another.svc.cluster.local/auth
-    nginx.ingress.kubernetes.io/auth-response-headers: "x-username, x-groups"
-    nginx.ingress.kubernetes.io/auth-snippet: |
-      proxy_set_header Ldap-Allowed-Groups "DevOps production environment, DevOps QA environment";
-    nginx.ingress.kubernetes.io/server-snippet: |
-      error_page 401 = @login;
-      location @login {
-        return 302 https://another-ldap.testmyldap.com/?protocol=$pass_access_scheme&callback=$host;
-      }
-spec:
-  rules:
-  - host: my-app.testmyldap.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: my-app
-            port:
-              number: 80
+  name: auth-headers
+  namespace: default
+data:
+  # Configuration-Headers (see below)
+  Ldap-Allowed-Groups: <comma-separated list groups>
 ```
 
-## Available parameters
-All parameters are defined in the config-map and secret manifests.
+Be aware that you have to reference the ConfigMap using `<namespace>/<name>` in `nginx.ingress.kubernetes.io/auth-proxy-set-headers` - otherwise the ConfigMap will be searched in the ingresses namespace.
 
-All values type are `string`.
+### Passing user-information to the secured service
 
-The parameter `LDAP_SEARCH_FILTER` supports variable expansion with the username, you can do something like this `(sAMAccountName={username})` and `{username}` is going to be replaced by the username typed in the login form.
-
-The parameter `LDAP_BIND_DN` supports variable expansion with the username, you can do something like this `{username}@TESTMYLDAP.com` or `UID={username},OU=PEOPLE,DC=TESTMYLDAP,DC=COM` and `{username}` is going to be replaced by the username typed in the login form.
-
-The parameter `COOKIE_DOMAIN` define the scope of the cookie, for example if you need to authentication/authorizate the domain `testmyldap.com` you should set the wildcard `.testmyldap.com` (notice the dot at the beginning).
-
-## Supported HTTP request headers
-The variables send via HTTP headers take precedence over environment variables.
-- `Ldap-Allowed-Users`
-- `Ldap-Allowed-Groups`
-- `Ldap-Conditional-Groups`: Default=`"or"`
-- `Ldap-Conditional-Users-Groups`: Default=`"or"`
-
-## HTTP response headers
-- `x-username` Contains the authenticated username
-- `x-groups` Contains the user's matches groups
+On successful authentication/authorization the service returns the username and the authorized groups within the HTTP-headers `X-User` and `X-Groups` which can be passed through the ingress using the annotation `nginx.ingress.kubernetes.io/auth-response-headers`.

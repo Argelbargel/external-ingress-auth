@@ -6,27 +6,70 @@ from aldap.logs import Logs
 from aldap.parameters import Parameters
 
 class Aldap:
-
-    def __init__(self):
+    def __init__(self, endpoint, bind_dn, search_base, search_filter, manager_dn, manager_password):
         self.param = Parameters()
         self.logs = Logs(self.__class__.__name__)
 
-        self.ldapEndpoint = self.param.get('LDAP_ENDPOINT', default='')
-        self.searchBase = self.param.get('LDAP_SEARCH_BASE')
-        self.dnUsername = self.param.get('LDAP_MANAGER_DN_USERNAME')
-        self.dnPassword = self.param.get('LDAP_MANAGER_PASSWORD')
-        self.bindDN = self.param.get('LDAP_BIND_DN')
-        self.searchFilter = self.param.get('LDAP_SEARCH_FILTER')
-        self.allowedUsers = self.param.get('LDAP_ALLOWED_USERS', default=None, type=str, onlyEnv=False)
-        self.allowedGroups = self.param.get('LDAP_ALLOWED_GROUPS', default=None, type=str, onlyEnv=False)
-        self.condGroups = self.param.get('LDAP_CONDITIONAL_GROUPS', default='or', type=str, onlyEnv=False)
-        self.condUsersGroups = self.param.get('LDAP_CONDITIONAL_USERS_GROUPS', default='or', type=str, onlyEnv=False)
-        if self.allowedUsers is not None:
-            self.allowedUsers = [x.strip() for x in self.allowedUsers.split(',')] # Convert string to list and trim each item
-        if self.allowedGroups is not None:
-            self.allowedGroups = [x.strip() for x in self.allowedGroups.split(',')] # Convert string to list and trim each item
+        self.ldapEndpoint = endpoint
+        self.bindDN = bind_dn
+        self.searchBase = search_base
+        self.searchFilter = search_filter
+        self.dnUsername = manager_dn
+        self.dnPassword = manager_password
 
-    def connect(self):
+        self.logs.info({'message':f"using {self.ldapEndpoint} for authentication", 'searchBase': self.searchBase, 'searchFilter': self.searchFilter }, False)
+
+    def authenticate(self, username:str, password:str) -> bool:
+        '''
+            Authenticate user by username and password
+        '''
+        finalUsername = username
+        if self.bindDN:
+            finalUsername = self.bindDN.replace("{username}", username)
+
+        self.logs.debug({'message':'Authenticating user via LDAP.', 'username': username, 'finalUsername': finalUsername})
+
+        start = time.time()
+        try:
+            connect = self._connect()
+            connect.simple_bind_s(finalUsername, password)
+            end = time.time()-start
+            self.logs.debug({'message':'Authentication successful via LDAP.', 'username': username, 'elapsedTime': str(end)})
+            return True
+        except ldap.INVALID_CREDENTIALS:
+            self.logs.warning({'message':'Authentication failed via LDAP, invalid credentials.', 'username': username})
+        except ldap.LDAPError as e:
+            self.logs.error({'message':'There was an error trying to bind: %s' % e})
+
+        return False
+
+
+    def authorize(self, username:str, allowed_users = None, allowed_groups = None, cond_groups = 'or', cond_users_groups = 'or'):
+        authorized = True
+        groups = []
+
+        # Check allowed users
+        if allowed_users is not None:
+            authorized = self._validateAllowedUsers(username, [x.strip() for x in allowed_users.split(',')])
+            if not authorized and cond_users_groups == 'and':
+                return False, []
+
+        # Check allowed groups
+        if allowed_groups is not None:
+            authorized, groups = self._validateAllowedGroups(username, self._userGroups(username), [x.strip() for x in allowed_groups.split(',')], cond_groups)
+
+        return authorized, groups
+
+    def health(self):
+        try:
+            connect = self._connect()
+            connect.simple_bind_s(self.dnUsername, self.dnPassword)
+        except ldap.LDAPError as e:
+            self.logs.warning({'message':'health-check failed: %s' % e})
+            return False
+        return True
+
+    def _connect(self):
         '''
             Returns LDAP object instance by opening LDAP connection to LDAP host
         '''
@@ -37,39 +80,14 @@ class Aldap:
         connect.set_option(ldap.OPT_DEBUG_LEVEL, 255)
         return connect
 
-    def authentication(self, username:str, password:str) -> bool:
-        '''
-            Authenticate user by username and password
-        '''
-        connect = self.connect()
-
-        finalUsername = username
-        if self.bindDN:
-            finalUsername = self.bindDN.replace("{username}", username)
-
-        self.logs.debug({'message':'Authenticating user via LDAP.', 'username': username, 'finalUsername': finalUsername})
-
-        start = time.time()
-        try:
-            connect.simple_bind_s(finalUsername, password)
-            end = time.time()-start
-            self.logs.info({'message':'Authentication successful via LDAP.', 'username': username, 'elapsedTime': str(end)})
-            return True
-        except ldap.INVALID_CREDENTIALS:
-            self.logs.warning({'message':'Authentication failed via LDAP, invalid credentials.', 'username': username})
-        except ldap.LDAPError as e:
-            self.logs.error({'message':'There was an error trying to bind: %s' % e})
-
-        return False
-
     def __getTree__(self, searchFilter:str) -> list:
         '''
             Returns the AD tree for the user, the user is search by the searchFilter
         '''
-        connect = self.connect()
         result = []
         try:
             start = time.time()
+            connect = self._connect()
             connect.simple_bind_s(self.dnUsername, self.dnPassword)
             result = connect.search_s(self.searchBase, ldap.SCOPE_SUBTREE, searchFilter)
             end = time.time()-start
@@ -102,7 +120,7 @@ class Aldap:
         except:
             return None
 
-    def getUserGroups(self, username:str):
+    def _userGroups(self, username:str):
         '''
             Returns user's groups
         '''
@@ -122,7 +140,7 @@ class Aldap:
         adGroups = list(map(self.__decode__,adGroups))
         return adGroups
 
-    def validateAllowedGroups(self, username:str, groups:list, allowedGroups:list, condGroups:str='or'):
+    def _validateAllowedGroups(self, username:str, groups:list, allowedGroups:list, condGroups:str='or'):
         '''
             Validate user's groups.
             Returns True and matched groups if the groups are valid for the user, False otherwise.
@@ -158,7 +176,7 @@ class Aldap:
         self.logs.warning({'message':'Invalid groups for the user.', 'username': username, 'matchedGroups': ','.join(matchedGroups), 'allowedGroups': ','.join(allowedGroups), 'conditional': condGroups})
         return False, []
 
-    def validateAllowedUsers(self, username:str, allowedUsers:list):
+    def _validateAllowedUsers(self, username:str, allowedUsers:list):
         '''
             Validate if the user is inside the allowed-user list.
             Returns True if the user is inside the list, False otherwise.
@@ -171,22 +189,3 @@ class Aldap:
         self.logs.info({'message':'User not found inside the allowed-user list.', 'username': username, 'allowedUsers': ','.join(allowedUsers)})
         return False
 
-    def authorization(self, username:str, groups:list):
-        # Check allowed users
-        if self.allowedUsers is not None:
-            validAllowedUsers = self.validateAllowedUsers(username, self.allowedUsers)
-            if validAllowedUsers:
-                if self.condUsersGroups=='or':
-                    return True, []
-            else:
-                if self.condUsersGroups=='and':
-                    return False, []
-
-        # Check allowed groups
-        if self.allowedGroups is not None:
-            validAllowedGroups, matchedGroups = self.validateAllowedGroups(username, groups, self.allowedGroups, self.condGroups)
-            if validAllowedGroups:
-                return True, matchedGroups
-            return False, []
-
-        return True, []
