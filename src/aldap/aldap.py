@@ -170,10 +170,10 @@ class Aldap:
                 self.logs.info({'message':'All groups are valid for the user.', 'username': username, 'matchedGroups': ','.join(matchedGroups), 'allowedGroups': ','.join(allowedGroups), 'conditional': condGroups})
                 return True, matchedGroups
         else:
-            self.logs.warning({'message':'Invalid conditional group.', 'username': username, 'conditional': condGroups})
+            self.logs.info({'message':'Invalid conditional group.', 'username': username, 'conditional': condGroups})
             return False, []
 
-        self.logs.warning({'message':'Invalid groups for the user.', 'username': username, 'matchedGroups': ','.join(matchedGroups), 'allowedGroups': ','.join(allowedGroups), 'conditional': condGroups})
+        self.logs.info({'message':'Invalid groups for the user.', 'username': username, 'matchedGroups': ','.join(matchedGroups), 'allowedGroups': ','.join(allowedGroups), 'conditional': condGroups})
         return False, []
 
     def _validateAllowedUsers(self, username:str, allowedUsers:list):
