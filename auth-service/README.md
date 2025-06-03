@@ -1,8 +1,8 @@
-# external-ldap-auth
+# auth-service
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.0](https://img.shields.io/badge/AppVersion-0.1.0-informational?style=flat-square)
 
-External LDAP Authentication provides an external authentication-service for Kubernetes Ingress Controllers which allows to authenticate and authorize users via LDAP-Servers.
+Installs an instance of the External LDAP Authentication Service that provides LDAP authentication for Kubernetes Ingress Controllers.
 It works perfect with NGINX ingress controller via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
 **Homepage:** <https://argelbargel.github.io/external-ldap-auth/>
