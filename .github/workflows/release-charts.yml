@@ -60,7 +60,7 @@ jobs:
     - name: Copy READMEs
       run: |
         cd ./main/$CHARTS_DIR
-        find . -type f -name README.md -exec cp --parents {} ./pages/$CHARTS_DIR \;
+        find . -type f -name README.md -exec cp --parents {} $GITHUB_WORKSPACE/pages/$CHARTS_DIR \;
 
     - name: Sync README.md to pages
       run: |
