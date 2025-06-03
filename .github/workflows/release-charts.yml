@@ -39,4 +39,33 @@ jobs:
       env:
         CR_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
 
-#        CR_RELEASE_NAME_TEMPLATE: ${{ needs.determine-release-version.outputs.current }}
+  #        CR_RELEASE_NAME_TEMPLATE: ${{ needs.determine-release-version.outputs.current }}
+
+  release-readmes:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: main
+
+    - name: Checkout Pages
+      uses: actions/checkout@v4
+      with:
+        ref: gh-pages
+        path: /tmp/pages
+
+    - name: Copy READMEs
+      run: |
+        cd $CHARTS_DIR
+        find . -type f -name README.md -exec cp --parents {} /tmp/pages/$CHARTS_DIR \;
+
+    - name: Sync README.md to pages
+      run: |
+        cd /tmp/pages
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+        git add .
+        git commit --signoff -am "Sync READMEs for ${{github.ref_name}}"
+        git push
