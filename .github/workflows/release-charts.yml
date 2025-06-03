@@ -49,21 +49,22 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: main
+        path: main
 
     - name: Checkout Pages
       uses: actions/checkout@v4
       with:
         ref: gh-pages
-        path: /tmp/pages
+        path: pages
 
     - name: Copy READMEs
       run: |
-        cd $CHARTS_DIR
-        find . -type f -name README.md -exec cp --parents {} /tmp/pages/$CHARTS_DIR \;
+        cd ./main/$CHARTS_DIR
+        find . -type f -name README.md -exec cp --parents {} ./pages/$CHARTS_DIR \;
 
     - name: Sync README.md to pages
       run: |
-        cd /tmp/pages
+        cd ./pages
         git config user.name "$GITHUB_ACTOR"
         git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
         git add .
