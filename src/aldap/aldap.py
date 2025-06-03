@@ -30,9 +30,9 @@ class Aldap:
         self.logs.debug({'message':'Authenticating user via LDAP.', 'username': username, 'finalUsername': finalUsername})
 
         start = time.time()
+        conn = self._connect()
         try:
-            connect = self._connect()
-            connect.simple_bind_s(finalUsername, password)
+            conn.simple_bind_s(finalUsername, password)
             end = time.time()-start
             self.logs.debug({'message':'Authentication successful via LDAP.', 'username': username, 'elapsedTime': str(end)})
             return True
@@ -40,6 +40,8 @@ class Aldap:
             self.logs.warning({'message':'Authentication failed via LDAP, invalid credentials.', 'username': username})
         except ldap.LDAPError as e:
             self.logs.error({'message':'There was an error trying to bind: %s' % e})
+        finally:
+            conn.unbind()
 
         return False
 
@@ -61,12 +63,14 @@ class Aldap:
         return authorized, groups
 
     def health(self):
+        conn = self._connect()
         try:
-            connect = self._connect()
-            connect.simple_bind_s(self.dnUsername, self.dnPassword)
+            conn.simple_bind_s(self.dnUsername, self.dnPassword)
         except ldap.LDAPError as e:
             self.logs.warning({'message':'health-check failed: %s' % e})
             return False
+        finally:
+            conn.unbind()
         return True
 
     def _connect(self):
@@ -85,15 +89,17 @@ class Aldap:
             Returns the AD tree for the user, the user is search by the searchFilter
         '''
         result = []
+        start = time.time()
+        conn = self._connect()
         try:
-            start = time.time()
-            connect = self._connect()
-            connect.simple_bind_s(self.dnUsername, self.dnPassword)
-            result = connect.search_s(self.searchBase, ldap.SCOPE_SUBTREE, searchFilter)
+            conn.simple_bind_s(self.dnUsername, self.dnPassword)
+            result = conn.search_s(self.searchBase, ldap.SCOPE_SUBTREE, searchFilter)
             end = time.time()-start
             self.logs.debug({'message':'Searched by filter.', 'filter': searchFilter, 'elapsedTime': str(end)})
         except ldap.LDAPError as e:
             self.logs.error({'message':'There was an error trying to bind: %s' % e})
+        finally:
+            conn.unbind()
 
         return result
 
