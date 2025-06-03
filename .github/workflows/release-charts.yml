@@ -61,8 +61,7 @@ jobs:
       run: |
         cd ./main/$CHARTS_DIR
         find . -type f -name README.md
-        echo "$GITHUB_WORKSPACE/pages/$CHARTS_DIR"
-        find . -type f -name README.md -exec cp --parents {} $GITHUB_WORKSPACE/pages/$CHARTS_DIR \;
+        find . -type f -name README.md -exec cp --parents {} $GITHUB_WORKSPACE/pages \;
 
     - name: Sync README.md to pages
       run: |
