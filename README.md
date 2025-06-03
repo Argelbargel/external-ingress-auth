@@ -20,7 +20,7 @@ External LDAP Authentication provides an external authentication-service for Kub
 
 ## Installation
 
-The easiest way to install the External LDAP Authentication service in your Kubernetes cluster is to use the provided [Helm chart](./helm/README.md).
+The easiest way to install the External LDAP Authentication service in your Kubernetes cluster is to use the provided [Helm chart](./charts/external-ldap-auth/).
 
 ## Configuration
 
