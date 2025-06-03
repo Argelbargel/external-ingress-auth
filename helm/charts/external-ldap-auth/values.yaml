@@ -37,6 +37,7 @@ image:
   pullSecrets: []
 
 deployment:
+  replicas: 1
   # -- additional labels specific to the deployment resource
   labels: {}
   # -- additional annotations specific to the deployment resource

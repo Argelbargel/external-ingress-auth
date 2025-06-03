@@ -8,7 +8,7 @@ metadata:
   annotations: 
     {{- include "external-ldap-auth.annotations" (list . .Values.deployment.annotations) | nindent 4 }}  
 spec:
-  replicas: 1
+  replicas: {{.Values.deployment.replicas}}
   selector:
     matchLabels: {{ include "external-ldap-auth.labels.selectors" . | nindent 6 }}
   template:
