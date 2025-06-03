@@ -22,19 +22,19 @@ COPY --chown=$UID:$GID ./src/ ./
 RUN chmod +x ./service.sh
 
 ENV DEV_MODE=false \
-    GUNICORN_CMD_ARGS="" \
     LDAP_ENDPOINT="http://localhost:389" \
     LDAP_BIND_DN="cn={username},<bind_n>" \
     LDAP_SEARCH_BASE="<search-base>" \
     LDAP_SEARCH_FILTER="(sAMAccountName={username})" \
     LDAP_MANAGER_DN="<manager-dn-username>" \
     LDAP_MANAGER_PASSWORD="<manager-dn-password>" \
+    LDAP_AUTHENTICATION_CACHE_TTL_SECONDS=15 \
     BRUTE_FORCE_PROTECTION_ENABLED="true" \
     BRUTE_FORCE_EXPIRATION_SECONDS="60" \
     BRUTE_FORCE_MAX_FAILURE_COUNT="5" \
-    AUTH_REALM="LDAP Authentication" \
-    LOG_LEVEL="INFO" \
-    LOG_FORMAT="JSON"
+    LOG_LEVEL="WARN" \
+    LOG_FORMAT="JSON" \
+    GUNICORN_CMD_ARGS=""
 
 USER $UID:$GID
 ENTRYPOINT [ "./service.sh" ]

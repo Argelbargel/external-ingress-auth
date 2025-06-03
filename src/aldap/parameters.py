@@ -2,18 +2,17 @@ from flask import request
 from os import environ
 
 class Parameters:
-
-    def get(self, key, default=None, type=None, onlyEnv=True):
+    def get(self, key, default=None, type=None, only_env=True):
         '''
             Returns the value from the key.
             First check environment variables.
-            Second check request headers if "onlyEnv=False".
+            Second check request headers if "only_env=False".
         '''
         value = default
 
         if key in environ:
             value = environ.get(key)
-        elif not onlyEnv:
+        elif not only_env:
             try:
                 if key in request.headers:
                     value = request.headers.get(key)

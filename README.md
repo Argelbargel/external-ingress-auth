@@ -36,6 +36,7 @@ The service reads it's configuration from the following environment variables:
 | LDAP_SEARCH_FILTER | `(sAMAccountName={username})` | specifies the filter used to query users when determing their group membership. Must contain the placeholder `{username}` which is replaced with the given username when authenticating |
 | LDAP_MANAGER_DN | required | specifies the User-DN used to query the LDAP-server to determine group-membership (e.g. `cn=manager,dn=Users,dn=example,dn.com`) |
 | LDAP_MANAGER_PASSWORD | required | specified the Password for the Manager-User given in LDAP_MANAGER_DN |
+| LDAP_AUTHENTICATION_CACHE_TTL_SECONDS | `15` | specifies how long the authentication is cached within the service (see [below](#caching-responses-from-the-authentication-service) for details) |
 | BRUTE_FORCE_PROTECTION_ENABLED | `true` | enables/disables the brute-force-protection which prevents too many login-attempts |
 | BRUTE_FORCE_PROTECTION_MAX_FAILURE_COUNT | `5` | specifies after how many failed login attempts the IP is blocked by the protection |
 | BRUTE_FORCE_PROTECTION_EXPIRATION_SECONDS | `60` | specifies the time window within which failed login attempts are counted and for how long an IP gets blocked |
@@ -74,6 +75,9 @@ metadata:
   namespace: default
   annotations:
     nginx.ingress.kubernetes.io/auth-url: <url to the service>
+    # recommended: cache responses of the authentication-service (see below for details)
+    nginx.ingress.kubernetes.io/auth-cache-key: $http_authorization
+    nginx.ingress.kubernetes.io/auth-cache-duration: 200 401 403 1m
     # optional: add this if you want to pass the name of the authenticated user to the secured service
     nginx.ingress.kubernetes.io/auth-response-headers: x-user
 spec:
@@ -103,6 +107,9 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/auth-url: <url to the service>
     nginx.ingress.kubernetes.io/auth-proxy-set-headers: default/auth-headers
+    # recommended: cache responses of the authentication-service (see below for details)
+    nginx.ingress.kubernetes.io/auth-cache-key: $http_authorization
+    nginx.ingress.kubernetes.io/auth-cache-duration: 200 401 403 1m
     # optional: add this if you want to pass the name and groups of the authenticated user to the secured service
     nginx.ingress.kubernetes.io/auth-response-headers: x-user, x-groups
   spec:
@@ -125,11 +132,22 @@ metadata:
   name: auth-headers
   namespace: default
 data:
-  # Configuration-Headers (see below)
+  # Configuration-Headers (see above)
   Ldap-Allowed-Groups: <comma-separated list groups>
 ```
 
 Be aware that you have to reference the ConfigMap using `<namespace>/<name>` in `nginx.ingress.kubernetes.io/auth-proxy-set-headers` - otherwise the ConfigMap will be searched in the ingresses namespace.
+
+### Caching authentication and responses from the authentication service
+
+The service itself can cache the *authentication* of credentials to prevent overloading the ldap-server with bind-requests; by default this cache has a TTL of 15 seconds. This cache stores whether the given credentials in the authorization-header are valid and the group-memberships of the authenticated user. *Authorization* is always re-evaluated for every request as matching the user's name and the user's groups is done within the authentication-service itself.
+
+To further improve performance you can configure the nginx ingress-controller to cache the responses of the authentication service so that no requests outside the ingress are required. In most use-cases enabling response-caching is recommended. To enable response-caching in the ingress, add the following annotations:
+
+```yaml
+nginx.ingress.kubernetes.io/auth-cache-key: $http_authorization # uses the value of the authorization-header as cache-key
+nginx.ingress.kubernetes.io/auth-cache-duration: 200 401 403 1m # caches all responses for one minute
+```
 
 ### Passing user-information to the secured service
 
