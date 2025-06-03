@@ -66,6 +66,12 @@ spec:
             successThreshold: 1
             failureThreshold: 3
             timeoutSeconds: 1
+          startupProbe:
+            httpGet:
+              port: http
+              path: /health
+            initialDelaySeconds: 10
+            timeoutSeconds: 1
           volumeMounts:
             - name: tmp
               mountPath: /tmp
