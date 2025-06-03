@@ -6,16 +6,16 @@ Helm-Charts for deployment of [External LDAP Auth](https://github.com/Argelbarge
 
 ## Charts
 
-### [External LDAP Auth](./charts/external-ldap-auth/)
+### [External LDAP Auth Service](./auth-service/)
 
 Installs the External LDAP Auth service. To install the chart:
 
 ```shell
 helm repo add external-ldap-auth https://argelbargel.github.io/external-ldap-auth/
-helm install external-ldap-auth/external-ldap-auth
+helm install external-ldap-auth/auth-service
 ```
 
-See [chart-details](./charts/external-ldap-auth/) for configuration.
+See [chart-details](./auth-service/) for configuration details.
 
 ## License
 

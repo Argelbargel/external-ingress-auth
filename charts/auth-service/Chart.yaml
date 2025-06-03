@@ -20,7 +20,7 @@ maintainers:
   url: https://github.com/Argelbargel
 annotations:
   artifacthub.io/images: |
-    - name: ldap-auth-service
+    - name: external-ldap-auth
       image: ghcr.io/argelbargel/external-ldap-auth:v0.1.0
   artifacthub.io/recommendations: |
     - url: https://kubernetes.github.io/ingress-nginx
