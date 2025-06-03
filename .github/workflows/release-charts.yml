@@ -49,17 +49,19 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: main
-        path: main
+        path: ./main
 
     - name: Checkout Pages
       uses: actions/checkout@v4
       with:
         ref: gh-pages
-        path: pages
+        path: ./pages
 
     - name: Copy READMEs
       run: |
         cd ./main/$CHARTS_DIR
+        find . -type f -name README.md
+        echo "$GITHUB_WORKSPACE/pages/$CHARTS_DIR"
         find . -type f -name README.md -exec cp --parents {} $GITHUB_WORKSPACE/pages/$CHARTS_DIR \;
 
     - name: Sync README.md to pages
