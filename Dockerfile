@@ -18,9 +18,8 @@ COPY ./requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt --no-cache-dir
 
 WORKDIR $HOME
-COPY --chown=$UID:$GID ./service.sh ./
-RUN chmod +x ./service.sh
 COPY --chown=$UID:$GID ./src/ ./
+RUN chmod +x ./service.sh
 
 ENV DEV_MODE=false \
     GUNICORN_CMD_ARGS="" \

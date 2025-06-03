@@ -1,12 +1,12 @@
 name: Release Charts
 
-on:
-  workflow_dispatch:
-  workflow_call:
-
 permissions:
   contents: write
   pages: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: release-charts-${{ github.ref }}

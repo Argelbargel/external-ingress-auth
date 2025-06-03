@@ -1,11 +1,26 @@
 name: Scan for vulnerabilities
 
+permissions:
+  contents: write
+  pull-requests: read
+  security-events: write
+
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    paths:
+    - "src/**"
+    - "requirements.txt"
+    - "Dockerfile"
+    - ".github/workflows/trivy-scan.yml"
   pull_request:
     branches: [ main ]
+    paths:
+    - "src/**"
+    - "requirements.txt"
+    - "Dockerfile"
+    - ".github/workflows/trivy-scan.yml"
   schedule:
   - cron: '00 03 * * *'
 
