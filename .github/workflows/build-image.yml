@@ -8,7 +8,9 @@ permissions:
 on:
   workflow_dispatch:
   workflow_call:
-
+  push:
+    tags:
+    - "v**.**.**"
 
 concurrency:
   group: build-image-${{github.ref}}
@@ -39,6 +41,7 @@ jobs:
           type=semver,pattern={{version}}
 
     - name: Login to Github Packages
+      if: github.event_name != 'pull_request'
       uses: docker/login-action@v3
       with:
         registry: ${{env.IMAGE_REGISTRY}}
