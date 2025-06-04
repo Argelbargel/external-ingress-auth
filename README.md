@@ -74,7 +74,7 @@ metadata:
   name: external-auth-ingress
   namespace: default
   annotations:
-    nginx.ingress.kubernetes.io/auth-url: <url to the service>
+    nginx.ingress.kubernetes.io/auth-url: <url to the service>/ # MUST end with /
     # recommended: cache responses of the authentication-service (see below for details)
     nginx.ingress.kubernetes.io/auth-cache-key: $http_authorization
     nginx.ingress.kubernetes.io/auth-cache-duration: 200 401 403 1m
@@ -105,7 +105,7 @@ metadata:
   name: external-auth-ingress
   namespace: default
   annotations:
-    nginx.ingress.kubernetes.io/auth-url: <url to the service>
+    nginx.ingress.kubernetes.io/auth-url: <url to the service>/ # MUST end with / 
     nginx.ingress.kubernetes.io/auth-proxy-set-headers: default/auth-headers
     # recommended: cache responses of the authentication-service (see below for details)
     nginx.ingress.kubernetes.io/auth-cache-key: $http_authorization
