@@ -11,6 +11,11 @@ on:
   push:
     tags:
     - "v**.**.**"
+    paths:
+    - "src/**"
+    - "requirements.txt"
+    - "Dockerfile"
+    - ".github/workflows/build-image.yml"
 
 concurrency:
   group: build-image-${{github.ref}}
