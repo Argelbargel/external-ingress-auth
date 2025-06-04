@@ -13,6 +13,8 @@ config:
     LDAP_SEARCH_BASE: "<search-base>"
     # -- the ldap search-filter used to search for users to determine their group membership
     LDAP_SEARCH_FILTER: "(sAMAccountName={username})"
+    # -- how long to cache authentication data
+    LDAP_AUTHENTICATION_CACHE_TTL_SECONDS: 15
     # -- enable/disable brute-force-protection when authenticating users
     BRUTE_FORCE_PROTECTION_ENABLED: true
     # -- number of failed authentication-attempts after which further requests are blocked
