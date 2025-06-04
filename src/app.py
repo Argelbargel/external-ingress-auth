@@ -14,27 +14,26 @@ from aldap.parameters import Parameters
 from aldap.aldap import Aldap
 
 
-
 # --- Parameters --------------------------------------------------------------
 param = Parameters()
 PAGE_FOOTER = param.get('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ldap-auth" target="_blank">Powered by External LDAP Authentication</a></small>', str)
-
-# --- LDAP-Connection ---------------------------------------------------------
-ldap = Aldap(param.get('LDAP_ENDPOINT', default=''), param.get('LDAP_BIND_DN'), param.get('LDAP_SEARCH_BASE'), param.get('LDAP_SEARCH_FILTER'), param.get('LDAP_MANAGER_DN'), param.get('LDAP_MANAGER_PASSWORD'))
-authCache = TTLCache(float('inf'), param.get("LDAP_AUTHENTICATION_CACHE_TTL_SECONDS", 15, float))
-
-# --- Brute Force -------------------------------------------------------------
-bruteForce = BruteForce(param.get('BRUTE_FORCE_PROTECTION_ENABLED', False, bool), param.get('BRUTE_FORCE_MAX_FAILURE_COUNT', 5, int), param.get('BRUTE_FORCE_EXPIRATION_SECONDS', 60, int))
-
-# --- Logging -----------------------------------------------------------------
-logs = Logs('main')
 
 # --- Flask -------------------------------------------------------------------
 app = Flask(__name__)
 app.config.from_object(__name__)
 app.config.update(SECRET_KEY=param.get('FLASK_SECRET_KEY', ''.join(SystemRandom().choice(ascii_letters + digits) for _ in range(16)), str))
+
+# --- LDAP-Connection ---------------------------------------------------------
+ldap = Aldap(param.get('LDAP_ENDPOINT', default=''), param.get('LDAP_BIND_DN'), param.get('LDAP_SEARCH_BASE'), param.get('LDAP_SEARCH_FILTER'), param.get('LDAP_MANAGER_DN'), param.get('LDAP_MANAGER_PASSWORD'))
+authCache = TTLCache(float('inf'), param.get("LDAP_AUTHENTICATION_CACHE_TTL_SECONDS", 15, float))
+bruteForce = BruteForce(param.get('BRUTE_FORCE_PROTECTION_ENABLED', False, bool), param.get('BRUTE_FORCE_MAX_FAILURE_COUNT', 5, int), param.get('BRUTE_FORCE_EXPIRATION_SECONDS', 60, int))
+
+# --- Metrics -------------------------------------------------------------------
 metrics = PrometheusMetrics(app, group_by='endpoint', excluded_paths='^/(?!$)', default_latency_as_histogram=False)
 blocked_ips = Counter('blocked_ips', 'IPs blocked by brute-force-protection', ['ip'])
+
+# --- Logging -----------------------------------------------------------------
+logs = Logs('main')
 
 
 # --- Routes ------------------------------------------------------------------
