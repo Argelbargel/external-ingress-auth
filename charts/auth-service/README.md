@@ -20,6 +20,7 @@ It works perfect with NGINX ingress controller via [External Authentication](htt
 | config.env.BRUTE_FORCE_EXPIRATION_SECONDS | int | `60` | window within which attempts get logged and for which further requests will be blocked  |
 | config.env.BRUTE_FORCE_MAX_FAILURE_COUNT | int | `5` | number of failed authentication-attempts after which further requests are blocked |
 | config.env.BRUTE_FORCE_PROTECTION_ENABLED | bool | `true` | enable/disable brute-force-protection when authenticating users |
+| config.env.LDAP_AUTHENTICATION_CACHE_TTL_SECONDS | int | `15` | how long to cache authentication data |
 | config.env.LDAP_BIND_DN | string | `"cn={username},{{ .Values.config.env.LDAP_SEARCH_BASE }}"` | the ldap bind-dn to used to authenticate users |
 | config.env.LDAP_ENDPOINT | string | `"https://localhost:636"` | the ldap server used to authenticate and authorize users |
 | config.env.LDAP_SEARCH_BASE | string | `"<search-base>"` | the ldap search-base used to search for users to determine their group membership |
