@@ -22,7 +22,6 @@ PAGE_FOOTER = param.get('PAGE_FOOTER', '<small><a href="https://github.com/Argel
 # --- Flask -------------------------------------------------------------------
 app = Flask(__name__)
 app.config.from_object(__name__)
-app.config.update(SECRET_KEY=param.get('FLASK_SECRET_KEY', ''.join(SystemRandom().choice(ascii_letters + digits) for _ in range(16)), str))
 
 # --- LDAP-Connection ---------------------------------------------------------
 ldap = Aldap(param.get('LDAP_ENDPOINT', default=''), param.get('LDAP_BIND_DN'), param.get('LDAP_SEARCH_BASE'), param.get('LDAP_SEARCH_FILTER'), param.get('LDAP_MANAGER_DN'), param.get('LDAP_MANAGER_PASSWORD'))
