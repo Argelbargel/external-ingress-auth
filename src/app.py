@@ -1,5 +1,6 @@
 from random import SystemRandom
 from string import ascii_letters, digits
+from urllib.parse import urlparse
 
 from flask import Flask
 from flask import abort, request, render_template
@@ -36,8 +37,17 @@ blocked_ips = Counter('blocked_ips', 'IPs blocked by brute-force-protection', ['
 logs = Logs('main')
 
 
+def _request_host():
+    url = request.url
+    if request.environ.get('HTTP_X_ORIGINAL_URL') is not None:
+        url = request.environ.get('HTTP_X_ORIGINAL_URL')
+    return urlparse(url).hostname
+
+
 # --- Routes ------------------------------------------------------------------
 @app.route('/', methods=['GET'])
+@metrics.counter('auth_requests', 'Authentication requests by hosts and status',
+                 labels={'host': _request_host, 'status': lambda r: r.status_code})
 def auth():
     if not request.authorization:
         logs.debug({'message':'Missing authorization-header'})
@@ -71,11 +81,11 @@ def auth():
 
     authorized, matched_groups = ldap.authorize(username, usergroups, allowed_users, allowed_groups, cond_groups, cond_users_groups)
     if not authorized:
-        logs.info({'message': 'Authorization failed', 'ip': ip, 'username': username})
+        logs.info({'message': 'Authorization failed', 'ip': ip, 'username': username, 'host': _request_host()})
         return abort(403)
 
-    logs.debug({'message':'Authorization successful', 'ip': ip, 'username': username, 'groups': matched_groups})
-    return _render_response(200, "Authorized", "You are authorized to access the requested resource", headers=[('x-username', username),('x-groups', ",".join(matched_groups))])
+    logs.debug({'message':'Authorization successful', 'ip': ip, 'username': username, 'host': _request_host(), 'groups': matched_groups})
+    return _render_response(200, "Authorized", "You are authorized to access the requested resource", headers=[('x-user', username),('x-groups', ",".join(matched_groups))])
 
 
 @app.route('/health', methods=['GET'])
@@ -121,6 +131,12 @@ def _request_ip():
         return request.environ.get('HTTP_X_FORWARDED_FOR')
 
     return request.remote_addr
+
+def _request_host():
+    url = request.url
+    if request.environ.get('HTTP_X_ORIGINAL_URL') is not None:
+        return request.environ.get('HTTP_X_ORIGINAL_URL')
+    return urlparse(url).hostname
 
 
 def _render_response(status_code, title, message, error = None, headers = None):
