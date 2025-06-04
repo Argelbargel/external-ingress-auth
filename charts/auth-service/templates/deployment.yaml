@@ -16,11 +16,11 @@ spec:
       labels: {{ include "external-ldap-auth.labels.selectors" . | nindent 8 }}
     spec:
       {{- with .Values.image.pullSecrets }}
-      imagePullSecrets: {{- toYaml (tpl . $) | nindent 8 }}
+      imagePullSecrets: {{- tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
       automountServiceAccountToken: false
       {{- with .Values.deployment.initContainers }}
-      initContainers: {{- toYaml (tpl . $) | nindent 8 }}
+      initContainers: {{- tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
       containers:
         - name: external-ldap-auth
@@ -29,13 +29,15 @@ spec:
           ports:
             - name: http
               containerPort: 9000
+          {{- with fromYaml (tpl (toYaml .Values.config.env) $) }}
           env:
-          {{- range $name, $value := .Values.config.env }}
+          {{- range $name, $value := . }}
           - name: {{ $name }}
             value: {{ (tpl (toString $value) $ ) | quote }}
           {{- end }}
+          {{- end }}
           {{- with .Values.config.envFrom }}
-          envFrom: {{- toYaml (tpl . $) | nindent 12 }}
+          envFrom: {{- tpl (toYaml .) $ | nindent 12 }}
           {{- end }}
           {{- with .Values.deployment.resources }}
           resources: {{ toYaml . | nindent 12 }}
@@ -76,11 +78,11 @@ spec:
             - name: tmp
               mountPath: /tmp
             {{- with .Values.deployment.volumeMounts }}
-            {{- toYaml (tpl . $) | nindent 12 }}            
+            {{- tpl (toYaml .) $ | nindent 12 }}            
             {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
         {{- with .Values.deployment.volumes }}
-        {{- toYaml (tpl . $) | nindent 8 }}            
+        {{- tpl (toYaml .) $ | nindent 8 }}            
         {{- end }}
