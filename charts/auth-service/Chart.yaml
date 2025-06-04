@@ -1,6 +1,6 @@
 apiVersion: v2
 type: application
-name: auth-service
+name: external-ldap-auth-service
 description: |
   Installs an instance of the External LDAP Authentication Service that provides LDAP authentication for Kubernetes Ingress Controllers.
   It works perfect with NGINX ingress controller via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
