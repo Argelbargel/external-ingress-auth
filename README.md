@@ -90,6 +90,31 @@ Authorization rules are declared in the format `<hosts>:<ip-ranges>:<methods>:<p
 
 Note that if any of the list-elements above contains the wildcard `**` any other element in the list is ignored (so `**,value` is equivalent to `**`).
 
+#### Examples
+
+##### Allow public, unauthenticated access
+
+The rule `**:**:**:/public/**:<public>` grants public access to anything below `/public/` on any host.
+
+##### Restrict access to users in some groups
+
+The rule `**:**:**:**:**:group1,group2` restricts access to any resource to authenticated users who are member of `group1` *or* `group2`
+The rule `**:**:**:**:**:group1,group2:AND` restricts access to any resource ot authenticated users who are member of `group1` *and* `group2`
+
+##### Restrict access to specific users
+
+The rule `**:**:POST,PUT,DELETE:/admin/**:admin,operator` restricts access for modifying requests below `/admin/` to the users `admin` or `operator`
+
+##### Combine users and groups
+
+The rule `**:**:PUT:/admin/**:admin,operator:editors` restricts access for PUT-requests below `/admin/` to either `admin` or `operator` *or* users in the group `editors`
+The rule `**:**:DELETE:/admin/**:admin,operator:cleaners:OR:AND` allows access for PUT-requests below `/admin/` only to users `admin` or `operator` if the are also in the group `cleaners`
+
+##### Host-specific rules
+
+The rule `example.com,*.example.com:172.100.0.1/24:**:**:<public>` allows public access to `example.com` and all direct subdomains from within the range `172.100.0.1 - 172.100.0.254`
+The rule `example.com:**:**:**:**:Testers,Reviewers` restricts requests to `example.com` to users in either group `Testers` or `Reviewers`
+
 #### Default Authorization Rule
 
 The default authorization rule is always `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized.
