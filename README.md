@@ -63,7 +63,7 @@ Except for authorization-rules, configuration is mainly done through environment
 
 | Variable               | Required/Default-Value | Description                  |
 |------------------------|------------------------|------------------------------|
-| AUTH_CACHE_TTL_SECONDS | `15` | specifies how long the authentication of users and selection of authorization-rules is cached within the service (see [below]()) |
+| AUTH_CACHE_TTL_SECONDS | `15` | specifies how long the authentication of users and selection of authorization-rules is cached within the service (see [below](#caching-authentication-authorization-rules-and-responses-from-the-authentication-service)) |
 | GUNICORN_CMD_ARGS | optional | allows you to specify custom arguments for the [gunicorn-server](https://gunicorn.org/) used by the service |
 | LOG_LEVEL | `INFO` | specifies the log-level. Valid values are `ERROR`, `WARN`, `INFO`, `DEBUG` and `TRACE`. |
 | LOG_FORMAT | `JSON` | specifies the log-format |
@@ -71,7 +71,7 @@ Except for authorization-rules, configuration is mainly done through environment
 
 ### Authorization Rules
 
-The authentication backend is solely used to authenticate a user's credentials and to provide information about the user's group-membership. All further authorization-restrictions (or lack thereof) are configured authorization rules provided by the file specified in `AUTHORIZATION_RULES_FILE` or in the [ingress-configuration]().
+The authentication backend is solely used to authenticate a user's credentials and to provide information about the user's group-membership. All further authorization-restrictions (or lack thereof) are configured authorization rules provided by the file specified in `AUTHORIZATION_RULES_FILE` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
 
 #### Authorization Rule Format
 
@@ -189,8 +189,8 @@ kind: ConfigMap
 metadata:
   name: auth-headers
   namespace: default
-data:
-  Authorization-Rules: <rule1> <rule2>
+data:"
+  Authorization-Rules: "<rule1> <rule2>"
 ```
 
 Be aware that you have to reference the ConfigMap using `<namespace>/<name>` in `nginx.ingress.kubernetes.io/auth-proxy-set-headers` - otherwise the ConfigMap will be searched in the ingresses namespace.
