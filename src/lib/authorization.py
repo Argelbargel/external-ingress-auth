@@ -1,12 +1,11 @@
 import re
 from os import makedirs
-from os.path import dirname, isfile, realpath
+from os.path import dirname, isfile
 from ipaddress import ip_address, ip_network
 from collections.abc import Iterable
 from pathlib import PurePath
 from watchdog.events import FileSystemEvent, FileSystemEventHandler, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
-
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver as Observer
 
 from .logs import Logs
 
@@ -244,7 +243,7 @@ class AuthorizationRulesFile(AuthorizationRules, FileSystemEventHandler):
     EVENTS = [EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED]
     
     def __init__(self, path:str, observer=None):
-        self._path = realpath(path)
+        self._path = path
         self._log = Logs(self.__class__.__name__)
         self._log.info(f"Using authorization rules from {self._path}...")
 
