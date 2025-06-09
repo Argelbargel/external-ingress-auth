@@ -10,10 +10,10 @@ External LDAP Authentication provides an external authentication-service for Kub
 
 ## Features
 
-- Authentication and Authorization for applications.
-- Authorization via LDAP groups, supports regex in groups list.
+- Authentication and Authorization for kubernetes ingresses.
+- Fine grained access control via flexible [authorization-rules](#authorization-rules)
+- Centralized rule-management and/or ingress-specific configuration of rules
 - Supports protocols `ldap://` and `ldaps://`.
-- Supports configuration via headers or via environment variables.
 - HTTP response headers with username and matched groups for the backend.
 - Brute force protection.
 - Log format in Plain-Text or JSON.
