@@ -13,5 +13,27 @@
 
 {{ template "chart.valuesSection" . }}
 
+## Authorization Rules
+
+Configuring [authorization rules](https://github.com/Argelbargel/external-ldap-auth#authorization-rules) for the service is much more readable when using this chart. 
+Rules are configured below the key `.config.rules`:
+
+```yaml
+config:
+  rules:
+  - hosts: [] # list of hosts for which the rule applies
+    ranges: [] # list of ip-ranges for which the rule applies, e.g. 192.168.0.1/16
+    methods: [] # list of methods for which the rule applies, e.g. GET
+    paths: [] # list of paths for which the rule applies, e.g. GET
+    public: false # whether access to the resource specified by the properties above is public (true) or restricted (false)
+    # the properties below are ignored if public: true
+    users: [] # list of users allowed access to the resource specified by the properties above
+    groups: [] # list of groups allowed access to the resource specified by the properties above
+    operators:
+      groups: <AND or OR> # default: OR
+      users-and-groups: <AND or OR> # default AND
+```
+
+
 ## License
 - Source code is licensed under MIT

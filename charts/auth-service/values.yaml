@@ -9,6 +9,37 @@ config:
   env: {}
   # -- further configuration-sources (e.g. secrets for manager-dn and password); can be templated e.g to use helm-values
   envFrom: []
+  # -- authorization rules (see #authorization-rules)
+  rules: []
+  # rules are defined in the following way:
+  # - hosts: 
+  #   - host1
+  #    - ...
+  #    - hostN
+  #   ranges: 
+  #   - range1
+  #   - ...
+  #   - rangeN
+  #   methods: 
+  #   - method1
+  #   - ...
+  #   - methodN
+  #   paths:
+  #   - path1
+  #   - ...
+  #   - pathN
+  #   public: false
+  #   users: <users>
+  #   - user1
+  #   - ...
+  #   - userN
+  #   groups:
+  #   - group1
+  #   - ...
+  #   - groupN
+  #   operators:
+  #     groups: <groups-operator>
+  #     users-and-groups: <users-groups-operator>
 
 image:
   # -- overrides the image-repo for the deployed container-image 

@@ -1,10 +1,11 @@
 import ldap
 import re
 from itertools import repeat
-from aldap.logs import Logs
+
+from .logs import Logs
 
 
-class Aldap:
+class LDAPAuthentication:
     def __init__(self, endpoint, bind_dn, search_base, search_filter, manager_dn, manager_password):
         self.ldap_endpoint = endpoint
         self.bind_dn = bind_dn
@@ -14,7 +15,7 @@ class Aldap:
         self.manager_password = manager_password
 
         self.logs = Logs(self.__class__.__name__)
-        self.logs.info({'message':f"Using {self.ldap_endpoint} for authentication", 'searchBase': self.search_base, 'searchFilter': self.search_filter })
+        self.logs.info(f"Using {self.ldap_endpoint} for authentication", searchBase=self.search_base, searchFilter=self.search_filter)
 
     def authenticate(self, username:str, password:str) -> tuple[bool, list[str]]:
         '''
@@ -27,13 +28,13 @@ class Aldap:
 
             conn = self._connect()
             try:
-                self.logs.debug({'message': f'Binding as {final_username}...', 'username': username})
+                self.logs.debug(f'Binding as {final_username}...', username=username)
                 conn.simple_bind_s(final_username, password)
                 return True, self._search_groups(username)
             except ldap.INVALID_CREDENTIALS:
                 pass
             except ldap.LDAPError as e:
-                self.logs.warning({'message':'An error occurred while trying to bind', 'error': str(e), 'username': username})
+                self.logs.warning('An error occurred while trying to bind', error=str(e), username=username)
             finally:
                 conn.unbind()
 
@@ -70,7 +71,7 @@ class Aldap:
         try:
             conn.simple_bind_s(self.manager_username, self.manager_password)
         except ldap.LDAPError as e:
-            self.logs.warning({'message':'Health-Check failed. An error occurred while trying to bind', 'error': str(e)})
+            self.logs.warning('Health-Check failed. An error occurred while trying to bind', error=str(e))
             return False
         finally:
             conn.unbind()
@@ -81,7 +82,7 @@ class Aldap:
         '''
             Returns LDAP object instance by opening LDAP connection to LDAP host
         '''
-        self.logs.debug({'message':'Connecting to LDAP server'})
+        self.logs.debug('Connecting to LDAP server...')
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
         connect = ldap.initialize(self.ldap_endpoint)
         connect.set_option(ldap.OPT_REFERRALS, 0)
@@ -96,7 +97,7 @@ class Aldap:
         groups = []
         conn = self._connect()
         try:
-            self.logs.debug({'message':'Getting user\'s groups...', 'username': username})
+            self.logs.debug("Getting user's groups...", username=username)
             conn.simple_bind_s(self.manager_username, self.manager_password)
             search_filter = self.search_filter.replace("{username}", username)
             for zone in conn.search_s(self.search_base, ldap.SCOPE_SUBTREE, search_filter):
@@ -120,11 +121,11 @@ class Aldap:
             Returns True and matched groups if the groups are valid for the user, False otherwise.
         '''
         if cond not in ['and', 'or']:
-            self.logs.warning({'message':'Invalid group conditional', 'conditional': cond})
+            self.logs.warning('Invalid group conditional', conditional=cond)
             return False, []
 
         # Get the groups from the AD if they are not send via parameters
-        self.logs.debug({'message':'Validating groups.', 'allowedGroups': ','.join(allowed), 'conditional': cond})
+        self.logs.debug('Validating groups.', allowedGroups=','.join(allowed), conditional=cond)
         matched_groups = []
         matches_by_group = []
         for group in allowed:
@@ -136,15 +137,15 @@ class Aldap:
         # Condition OR, true if just 1 group match
         if cond == 'or':
             if len(matched_groups) > 0:
-                self.logs.debug({'message':'At least one group is valid', 'matchedGroups': ','.join(matched_groups), 'allowedGroups': ','.join(allowed), 'conditional': cond})
+                self.logs.debug('At least one group is valid', matchedGroups=','.join(matched_groups), allowedGroups=','.join(allowed), conditional=cond)
                 return True, matched_groups
         # Condition AND, true if all the groups match
         elif cond == 'and':
             if len(allowed) == len(matches_by_group):
-                self.logs.debug({'message':'All groups are valid', 'matchedGroups': ','.join(matched_groups), 'allowedGroups': ','.join(allowed), 'conditional': cond})
+                self.logs.debug('All groups are valid', matchedGroups=','.join(matched_groups), allowedGroups=','.join(allowed), conditional=cond)
                 return True, matched_groups
 
-        self.logs.info({'message':'No group matched', 'matchedGroups': ','.join(matched_groups), 'allowedGroups': ','.join(allowed), 'conditional': cond})
+        self.logs.info('No group matched', matchedGroups=','.join(matched_groups), allowedGroups=','.join(allowed), conditional=cond)
         return False, []
 
 
@@ -153,7 +154,7 @@ class Aldap:
             # Extract the Common Name from the string (letters, spaces, underscores and hyphens)
             ad_group = re.search(r'(?i)CN=((\w*\s?_?-?)*)', ad_group).group(1)
         except Exception as e:
-            self.logs.warning({'message':'There was an error trying to search CN: %s' % e})
+            self.logs.warning(f'There was an error trying to search CN: {e}')
             return None
 
         ad_group = ad_group.lower()
@@ -171,11 +172,11 @@ class Aldap:
             Validate if the user is inside the allowed-user list.
             Returns True if the user is inside the list, False otherwise.
         '''
-        self.logs.debug({'message':'Validating allowed-users list.', 'username': username, 'allowedUsers': ','.join(allowed)})
+        self.logs.debug('Validating allowed-users list.', username=username, allowedUsers=','.join(allowed))
         for user in allowed:
             if username.lower() == user.strip().lower():
-                self.logs.debug({'message':'User in the allowed-user list.', 'username': username, 'allowedUsers': ','.join(allowed)})
+                self.logs.debug('User in the allowed-user list.', username=username, allowedUsers=','.join(allowed))
                 return True
-        self.logs.info({'message':'User not found in the allowed-user list.', 'username': username, 'allowedUsers': ','.join(allowed)})
+        self.logs.info('User not found in the allowed-user list.', username=username, allowedUsers=','.join(allowed))
         return False
 

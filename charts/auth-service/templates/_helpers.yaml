@@ -28,3 +28,26 @@ app.kubernetes.io/managed-by: {{ (index . 0).Release.Service | quote }}
 {{ $name }}: {{ $value | quote }}
 {{- end }}
 {{- end }}
+
+{{- define "external-ldap-auth.rule" }}
+{{- include "external-ldap-auth.rule-part" .hosts -}}:
+{{- include "external-ldap-auth.rule-part" .ranges -}}:
+{{- include "external-ldap-auth.rule-part" .methods -}}:
+{{- include "external-ldap-auth.rule-part" .paths -}}:
+{{- if .public -}}
+<public>
+{{- else -}}
+{{- include "external-ldap-auth.rule-part" .users -}}
+{{- if .groups -}}
+:{{- include "external-ldap-auth.rule-part" .groups -}}
+{{- with .operators -}}
+:{{ default "OR" .groups }}:{{ default "AND" (get . "users-and-groups") -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+
+{{- define "external-ldap-auth.rule-part" -}}
+{{- if . }}{{ join "," . }}{{ else }}**{{ end }}
+{{- end -}}

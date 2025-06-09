@@ -1,5 +1,6 @@
 from cachetools import TTLCache
-from aldap.logs import Logs
+
+from .logs import Logs
 
 class BruteForce:
     def __init__(self, enabled:bool, max_failures:int, expiration:int):
@@ -9,7 +10,7 @@ class BruteForce:
 
         self.logs = Logs(self.__class__.__name__)
         if (self.enabled):
-            self.logs.info({'message':'brute-force-protection is enabled', 'failures': self.max_failures, 'expiration': expiration})
+            self.logs.info('brute-force-protection is enabled', failures=self.max_failures, expiration=expiration)
 
     def add_failure(self, ip):
         '''
@@ -22,7 +23,7 @@ class BruteForce:
         if ip in self.database:
             failures = self.database[ip] + 1
 
-        self.logs.debug({'message': 'increased authentication failures', 'ip': ip, 'failures': failures})
+        self.logs.debug('increased authentication failures', ip=ip, failures=failures)
         self.database[ip] = failures
 
         if failures >= self.max_failures:
