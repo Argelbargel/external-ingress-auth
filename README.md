@@ -24,9 +24,9 @@ The easiest way to install the External LDAP Authentication service in your Kube
 
 ## Configuration
 
-### Environment Variables
+Except for authorization-rules, configuration is mainly done through environment-variables.
 
-The service reads it's configuration from the following environment variables:
+### Authentication Backend
 
 | Variable         | Required/Default-Value | Description                  |
 |------------------|------------------------|------------------------------|
@@ -36,26 +36,82 @@ The service reads it's configuration from the following environment variables:
 | LDAP_SEARCH_FILTER | `(sAMAccountName={username})` | specifies the filter used to query users when determing their group membership. Must contain the placeholder `{username}` which is replaced with the given username when authenticating |
 | LDAP_MANAGER_DN | required | specifies the User-DN used to query the LDAP-server to determine group-membership (e.g. `cn=manager,dn=Users,dn=example,dn.com`) |
 | LDAP_MANAGER_PASSWORD | required | specified the Password for the Manager-User given in LDAP_MANAGER_DN |
-| LDAP_AUTHENTICATION_CACHE_TTL_SECONDS | `15` | specifies how long the authentication is cached within the service (see [below](#caching-responses-from-the-authentication-service) for details) |
+
+### Authorization
+
+| Variable         | Required/Default-Value | Description                          |
+|--------------------------|------------------------|------------------------------|
+| AUTHORIZATION_RULES_FILE | optional       | file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules) |
+| AUTHORIZATION_INGRESS_RULES | `disabled`  | whether [authorization](#authorization-rules) rules may be supplied by headers sent via headers through [ingress-configuration](#ingress-configuration-of-authorization-rules). When set to `disabled`, rules sent by the ingress are completely ignored. To allow an ingress to further restrict the rules provided the authorization file, set the value to `append`. To allow ingresses to override the default authorization file, set the value to `override`. |
+
+### Brute-Force-Protection
+
+| Variable         | Required/Default-Value | Description                  |
+|------------------|------------------------|------------------------------|
 | BRUTE_FORCE_PROTECTION_ENABLED | `true` | enables/disables the brute-force-protection which prevents too many login-attempts |
 | BRUTE_FORCE_PROTECTION_MAX_FAILURE_COUNT | `5` | specifies after how many failed login attempts the IP is blocked by the protection |
 | BRUTE_FORCE_PROTECTION_EXPIRATION_SECONDS | `60` | specifies the time window within which failed login attempts are counted and for how long an IP gets blocked |
+
+### HTTPS/TLS
+
+| Variable         | Required/Default-Value | Description                  |
+|------------------|------------------------|------------------------------|
 | TLS_CERT | optional | specifies the path to the certificate used for TLS/HTTPS. If no certificate is specified, the service communicates via unsecured HTTP |
 | TLS_KEY | optional | specifies the key for the certificate specified in TLS_CERT  |
+
+### Miscellaneous
+
+| Variable               | Required/Default-Value | Description                  |
+|------------------------|------------------------|------------------------------|
+| AUTH_CACHE_TTL_SECONDS | `15` | specifies how long the authentication of users and selection of authorization-rules is cached within the service (see [below]()) |
 | GUNICORN_CMD_ARGS | optional | allows you to specify custom arguments for the [gunicorn-server](https://gunicorn.org/) used by the service |
+| LOG_LEVEL | `INFO` | specifies the log-level. Valid values are `ERROR`, `WARN`, `INFO`, `DEBUG` and `TRACE`. |
+| LOG_FORMAT | `JSON` | specifies the log-format |
 | PAGE_FOOTER | optional | specifies the HTML in the footer of the error-pages rendered by the service. To disable the footer, set `PAGE_FOOTER=""` |
 
-### Headers
+### Authorization Rules
 
-The following options are either configured using environment variables or by configuring the ingress to pass them as HTTP-headers. If the environment variable is present it always take precedence and headers are ignored:
+The authentication backend is solely used to authenticate a user's credentials and to provide information about the user's group-membership. All further authorization-restrictions (or lack thereof) are configured authorization rules provided by the file specified in `AUTHORIZATION_RULES_FILE` or in the [ingress-configuration]().
 
-| Variable           | Header     | Default-Value       | Description                                  |
-|--------------------|------------|---------------------|----------------------------------------------|
-| AUTH_REALM         | Auth-Realm | LDAP Authentication | the Basic Auth Realm returned by the service |
-| LDAP_ALLOWED_GROUPS| Ldap-Allowed-Groups |            | comma-separated list of groups the user must be member of to be allowed access. The given list is matched against the  CNs of the users ldap-groups (e.g. `groupA,groupB` matches `cn=groupA,cn=Users,dn=example,dn=com` and `cn=something,cn=groupB,dn=example,dn=com`) |
-| LDAP_ALLOWED_USERS | Ldap-Allowed-Users |             | comma-separated lust of users the current user must be in to be allowed access |
-| LDAP_CONDITIONAL_GROUPS | Ldap-Conditional-Groups | `or` | specifies whether the user must be in any group (`or`) or all groups (`and`) |
-| LDAP_CONDITIONAL_USERS_GROUPS | Ldap-Conditional-User-Groups | `or` | specifies whether both the given user- and group-requirement must be met (`and`) or if access is granted when either the user or it's group matches (`or`) |
+#### Authorization Rule Format
+
+Authorization rules are declared in the format `<hosts>:<ip-ranges>:<methods>:<paths>:<users>:<groups>:<groups-operator>:<users-groups-operator>`. The parts have the following meaning:
+
+| Rule element   | Default-Value | Description |
+|----------------|---------------|-------------|
+| `<hosts>`      | `**`          | comma-separated list of ingress-hosts the rule applies to. The default value `**` applies to all ingress-hosts |
+| `<ip-ranges>`  | `**`          | comma-separated list of ip-ranges. For the rule to apply, the remote-ip from which the request is made must be within the given ranges. The default value `**` applies to any remote-ip |
+| `<methods>`    | `**`          | comma-separated list of http-methods. The rule only applies if a request is made with the given methods. The default-value `**` applies to any method |
+| `<paths>`      | `**`          | comma-separated list of requested paths the rule applies to. The pattern is evaluated using [PurePath#full_match()](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match), so `/public/**` matches any path below `/public/` and `/downloads/*` matches for any file below the path `/downloads/`. The defaul-value `**` matches any path |
+| `<users>`      | `**`          | comma-separated list of usernames. To be authorized, an authenticated user must be in this list and/or one of the groups specified (see `<users-groups-operator>`). To allow public/unauthenticated-access to a resource, use the special value `<public>`. If the list contains `<public>`, any further settings concerning group-membership etc. are ignored. The default-value `**` allows access for all authenticated users |
+| `<groups>`     | `**`          | comma-separated list of groups. To be authorized, an authenticated user must be member of one or all of the specified groups - see `<groups-operator>` - and possibly in the list of users (see `<users-groups-operator>`). The default-value `**` allows access for all authenticated users |
+| `<groups-operator>`| `OR`      | specifies whether an authenticated user must be member of all groups specified in `<groups>` (`AND`) or any of them (`OR`) |
+| `<users-groups-operator>` | `AND` | specifies wheter an authenicated user match the `<users>` and `<groups>` part of the rule (`AND`) or only one of them (`OR`) |
+
+Note that if any of the list-elements above contains the wildcard `**` any other element in the list is ignored (so `**,value` is equivalent to `**`).
+
+#### Default Authorization Rule
+
+The default authorization rule is always `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized.
+
+#### Authorization File Format
+
+The authorization file may contain multiple rules separated by any ([unescaped](#escaping-of-separator-characters)) whitespace-character.
+
+Thus you may either specify multiple rules on one line:
+
+`**:**:**:/public:<public> **:**:**:/admin/**:admin`
+
+Or one rule per line:
+
+```plain
+**:**:**:/public:<public>
+**:**:**:/admin/**:admin
+```
+
+#### Escaping of separator characters
+
+Any of the special separator characters used in the rules definition (`:`, `,` and whitespace) can be escaped using `\<character`, e.g. `User\ containing a \:\ colon`.
 
 ## Usage
 
@@ -94,9 +150,11 @@ spec:
               number: 80
 ```
 
-### Authorization
+### Ingress Configuration of Authorization Rules
 
-If you want to restrict access to specific users or groups the configuration of the ingress is a bit more involved. Besides configuring the url of the auth-service you have to specify the restriction in a ConfigMap:
+Depending on the [auth-service's configuration](#authorization) you can pass additional [authorization rules](#authorization-rules) from the ingress or override those provided by in the config-file of the service.
+
+To provide additional rules, you have to specify them in a ConfigMap:
 
 ```yaml
 ---
@@ -132,15 +190,16 @@ metadata:
   name: auth-headers
   namespace: default
 data:
-  # Configuration-Headers (see above)
-  Ldap-Allowed-Groups: <comma-separated list groups>
+  Authorization-Rules: <rule1> <rule2>
 ```
 
 Be aware that you have to reference the ConfigMap using `<namespace>/<name>` in `nginx.ingress.kubernetes.io/auth-proxy-set-headers` - otherwise the ConfigMap will be searched in the ingresses namespace.
 
-### Caching authentication and responses from the authentication service
+### Caching authentication, authorization rules and responses from the authentication service
 
-The service itself can cache the *authentication* of credentials to prevent overloading the ldap-server with bind-requests; by default this cache has a TTL of 15 seconds. This cache stores whether the given credentials in the authorization-header are valid and the group-memberships of the authenticated user. *Authorization* is always re-evaluated for every request as matching the user's name and the user's groups is done within the authentication-service itself.
+The service itself can cache the *authentication* of credentials to prevent overloading the ldap-server with bind-requests and the selection of [authorization-rules](#authorization-rules); by default this cache has a TTL of 15 seconds. The cache stores whether the given credentials in the authorization-header are valid and the group-memberships of the authenticated user. Selection of the authorization rules is cached based on ingress-host, remote-ip, http-method and requested path. While the selected rule is cached, actual *authorization* is always re-evaluated for every request.
+
+#### Caching Authorization Responses in the Ingress
 
 To further improve performance you can configure the nginx ingress-controller to cache the responses of the authentication service so that no requests outside the ingress are required. In most use-cases enabling response-caching is recommended. To enable response-caching in the ingress, add the following annotations:
 

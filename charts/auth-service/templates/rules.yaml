@@ -1,0 +1,16 @@
+{{- with .Values.config.rules }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "external-ldap-auth.name" $ }}-rules
+  namespace: "{{ $.Release.Namespace }}"
+  labels: {{- include "external-ldap-auth.labels" (list $ dict) | nindent 4 }}
+  annotations: 
+    {{- include "external-ldap-auth.annotations" (list $ dict) | nindent 4 }}  
+data:
+  rules: |
+  {{- range $_, $r := . }}
+    {{ include "external-ldap-auth.rule" . }}
+  {{- end }}
+{{- end }}

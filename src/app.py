@@ -1,5 +1,4 @@
-from random import SystemRandom
-from string import ascii_letters, digits
+from os import getenv
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -9,24 +8,35 @@ from cachetools import TTLCache, cached
 from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import Counter
 
-from aldap.logs import Logs
-from aldap.bruteforce import BruteForce
-from aldap.parameters import Parameters
-from aldap.aldap import Aldap
+from lib.authentication import LDAPAuthentication
+from lib.authorization import AuthorizationRule, AuthorizationRulesFile, AuthorizationRulesParser
+from lib.bruteforce import BruteForce
+from lib.logs import Logs
 
 
 # --- Parameters --------------------------------------------------------------
-param = Parameters()
-PAGE_FOOTER = param.get('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ldap-auth" target="_blank">Powered by External LDAP Authentication</a></small>', str)
+AUTHORIZATION_INGRESS_RULES = getenv('AUTHORIZATION_INGRESS_RULES', 'disabled').lower()
+PAGE_FOOTER = getenv('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ldap-auth" target="_blank">Powered by External LDAP Authentication</a></small>')
+
+# --- Authentication & Authorization ------------------------------------------
+defaultAuthRules = AuthorizationRulesFile(getenv("AUTHORIZATION_RULES_PATH", "./config/rules.conf"))
+authCache = TTLCache(float('inf'), float(getenv("AUTH_CACHE_TTL_SECONDS", "15")))
+
+# --- LDAP-Connection ---------------------------------------------------------
+ldap = LDAPAuthentication(
+        getenv('LDAP_ENDPOINT', ''), getenv('LDAP_BIND_DN'), 
+        getenv('LDAP_SEARCH_BASE'), getenv('LDAP_SEARCH_FILTER'), 
+        getenv('LDAP_MANAGER_DN'), getenv('LDAP_MANAGER_PASSWORD')
+    )
+bruteForce = BruteForce(
+                getenv('BRUTE_FORCE_PROTECTION_ENABLED', "false").lower() == "true", 
+                int(getenv('BRUTE_FORCE_MAX_FAILURE_COUNT', "5")), 
+                int(getenv('BRUTE_FORCE_EXPIRATION_SECONDS', "60"))
+            )
 
 # --- Flask -------------------------------------------------------------------
 app = Flask(__name__)
 app.config.from_object(__name__)
-
-# --- LDAP-Connection ---------------------------------------------------------
-ldap = Aldap(param.get('LDAP_ENDPOINT', default=''), param.get('LDAP_BIND_DN'), param.get('LDAP_SEARCH_BASE'), param.get('LDAP_SEARCH_FILTER'), param.get('LDAP_MANAGER_DN'), param.get('LDAP_MANAGER_PASSWORD'))
-authCache = TTLCache(float('inf'), param.get("LDAP_AUTHENTICATION_CACHE_TTL_SECONDS", 15, float))
-bruteForce = BruteForce(param.get('BRUTE_FORCE_PROTECTION_ENABLED', False, bool), param.get('BRUTE_FORCE_MAX_FAILURE_COUNT', 5, int), param.get('BRUTE_FORCE_EXPIRATION_SECONDS', 60, int))
 
 # --- Metrics -------------------------------------------------------------------
 metrics = PrometheusMetrics(app, group_by='endpoint', excluded_paths='^/(?!$)', default_latency_as_histogram=False)
@@ -35,12 +45,21 @@ blocked_ips = Counter('blocked_ips', 'IPs blocked by brute-force-protection', ['
 # --- Logging -----------------------------------------------------------------
 logs = Logs('main')
 
+if AUTHORIZATION_INGRESS_RULES == "override":
+    logs.warning(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - ingresses may completely override authorization required by default-rules!")
+elif AUTHORIZATION_INGRESS_RULES == "append":
+    logs.info(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - rules provided by ingresses only take effect if none of the default-rules apply.")
+elif AUTHORIZATION_INGRESS_RULES != "disabled":
+    logs.warning(f"Invalid value '{AUTHORIZATION_INGRESS_RULES}' for AUTHORIZATION_INGRESS_RULES provided!")
+else:
+    logs.info(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - rules provided by ingresses are ignored.")
+
 
 def _request_host():
-    url = request.url
-    if request.environ.get('HTTP_X_ORIGINAL_URL') is not None:
-        url = request.environ.get('HTTP_X_ORIGINAL_URL')
-    return urlparse(url).hostname
+    return _parse_request_url().hostname
+
+def _request_path():
+    return _parse_request_url().path
 
 
 # --- Routes ------------------------------------------------------------------
@@ -48,43 +67,45 @@ def _request_host():
 @metrics.counter('auth_requests', 'Authentication requests by hosts and status',
                  labels={'host': _request_host, 'status': lambda r: r.status_code})
 def auth():
-    if not request.authorization:
-        logs.debug({'message':'Missing authorization-header'})
-        return abort(401)
-
-    username = request.authorization.username
-    password = request.authorization.password
     ip = _request_ip()
+    rule = _find_rule(_request_host(), ip, request.method, _request_path())
+    headers = []
 
-    if bruteForce.is_blocked(ip):
-        logs.info({'message': 'Rejecting request from blocked ip', 'ip': ip, 'username': username})
-        return abort(429)
+    if not rule.is_public():
 
-    authenticated, usergroups = _authenticate_(username, password)
-    if not authenticated:
-        logs.info({'message': 'Authentication failed', 'ip': ip, 'username': username})
+        if not request.authorization:
+            logs.debug('Missing authorization-header')
+            return abort(401)
 
-        if bruteForce.add_failure(ip):
-            logs.warning({'message':'Blocking requests after to many authentication failures', 'ip': ip, 'username': username})
-            blocked_ips.labels(ip=ip).inc()
+        username = request.authorization.username
+        password = request.authorization.password
+
+        if bruteForce.is_blocked(ip):
+            logs.info('Rejecting request from blocked ip', ip=ip, username=username)
             return abort(429)
 
-        return abort(401)
+        authenticated, usergroups = _authenticate_(username, password)
+        if not authenticated:
+            logs.info('Authentication failed', ip=ip, username=username)
 
-    logs.debug({'message':'Authentication successful', 'ip': ip, 'username': username, 'groups': usergroups})
+            if bruteForce.add_failure(ip):
+                logs.warning('Blocking requests after to many authentication failures', ip=ip, username=username)
+                blocked_ips.labels(ip=ip).inc()
+                return abort(429)
 
-    allowed_users = param.get('LDAP_ALLOWED_USERS', default=None, type=str, only_env=False)
-    allowed_groups = param.get('LDAP_ALLOWED_GROUPS', default=None, type=str, only_env=False)
-    cond_groups = param.get('LDAP_CONDITIONAL_GROUPS', default='or', type=str, only_env=False).lower()
-    cond_users_groups = param.get('LDAP_CONDITIONAL_USERS_GROUPS', default='or', type=str, only_env=False).lower()
+            return abort(401)
 
-    authorized, matched_groups = ldap.authorize(username, usergroups, allowed_users, allowed_groups, cond_groups, cond_users_groups)
-    if not authorized:
-        logs.info({'message': 'Authorization failed', 'ip': ip, 'username': username, 'host': _request_host()})
-        return abort(403)
+        logs.debug('Authentication successful', ip=ip, username=username, groups=usergroups)
 
-    logs.debug({'message':'Authorization successful', 'ip': ip, 'username': username, 'host': _request_host(), 'groups': matched_groups})
-    return _render_response(200, "Authorized", "You are authorized to access the requested resource", headers=[('x-user', username),('x-groups', ",".join(matched_groups))])
+        authorized, matched_groups = rule.authorize(username, usergroups)
+        if not authorized:
+            logs.info('Authorization failed', ip=ip, username=username, host= _request_host(), rule=rule)
+            return abort(403)
+
+        headers=[('x-user', username),('x-groups', ",".join(matched_groups))]
+        logs.debug('Authorization successful', ip=ip, username=username, host=_request_host(), groups=matched_groups, rule=rule)
+
+    return _render_response(200, "Authorized", "You are authorized to access the requested resource", headers=headers)
 
 
 @app.route('/health', methods=['GET'])
@@ -105,14 +126,31 @@ def global_headers(response):
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     if e.code not in [401, 403, 404, 405, 429]:
-        logs.error({'message': 'an error occurred while processing a request', 'ip': _request_ip(), 'path': request.path, 'code': e.code, 'name': e.name, 'description': e.description})
+        logs.error('An error occurred while processing a request', ip=_request_ip(), path=request.path, code=e.code, name=e.name, description=e.description)
 
-    return _render_response(e.code, e.name, e.description, "An Error Occurred While Processing Your Request") 
+    return _render_response(e.code, e.name, e.description, "An Error Occurred While Processing Your Request")
 
 
 @cached(authCache)
 def _authenticate_(username, password):
     return ldap.authenticate(username, password)
+
+
+@cached(authCache)
+def _find_rule(host:str, ip:str, method:str, path:str) -> AuthorizationRule:
+    rules = defaultAuthRules
+    if AUTHORIZATION_INGRESS_RULES and 'AUTHORIZATION_RULES' in request.headers:
+        customRules = AuthorizationRulesParser().parse(request.headers.get('AUTHORIZATION_RULES'))
+        if AUTHORIZATION_INGRESS_RULES == "override":
+            logs.debug("overriding default-rules with custom-rules", customRules=customRules, defaultRules=defaultAuthRules)
+            rules = customRules.combine(defaultAuthRules)
+        elif AUTHORIZATION_INGRESS_RULES == "append":
+            logs.debug("appending custom-rules to default-rules", defaultRules=defaultAuthRules, customRules=customRules)
+            rules = defaultAuthRules.combine(customRules)
+
+    rule = rules.find_rule(host, ip, method, path)
+    logs.info(f"Authenticating request using rule {rule}...", host=host, ip=ip, method=method, path=path)
+    return rule
 
 
 def _request_ip():
@@ -131,11 +169,12 @@ def _request_ip():
 
     return request.remote_addr
 
-def _request_host():
+
+def _parse_request_url():
     url = request.url
     if request.environ.get('HTTP_X_ORIGINAL_URL') is not None:
-        return request.environ.get('HTTP_X_ORIGINAL_URL')
-    return urlparse(url).hostname
+        url = request.environ.get('HTTP_X_ORIGINAL_URL')
+    return urlparse(url)
 
 
 def _render_response(status_code, title, message, error = None, headers = None):
@@ -144,14 +183,13 @@ def _render_response(status_code, title, message, error = None, headers = None):
 
     layout = {
         'error': error,
-        'realm': param.get('AUTH_REALM', 'LDAP Authentication', str, False),
         'title': title,
         'message': message,
         'footer': PAGE_FOOTER
     }
 
     if status_code == 401:
-        headers.append( ('WWW-Authenticate', 'Basic realm=' + layout["realm"]))
+        headers.append( ('WWW-Authenticate', 'Basic realm=External LDAP Authentication'))
 
     return render_template('page.html', layout=layout), status_code, headers
 

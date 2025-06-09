@@ -31,6 +31,8 @@ spec:
               containerPort: 9000
           {{- with fromYaml (tpl (toYaml .Values.config.env) $) }}
           env:
+          - name: AUTHORIZATION_RULES_FILE
+            value: /external-ldap-auth/config/rules.conf
           {{- range $name, $value := . }}
           - name: {{ $name }}
             value: {{ (tpl (toString $value) $ ) | quote }}
@@ -77,12 +79,24 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- with .Values.config.rules }}
+            - name: config
+              mountPath: /external-ldap-auth/config/
+            {{- end }}
             {{- with .Values.deployment.volumeMounts }}
             {{- tpl (toYaml .) $ | nindent 12 }}            
             {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- with .Values.config.rules }}
+        - name: config
+          configMap:
+            name: {{ template "external-ldap-auth.name" $ }}-rules
+            items:
+            - key: rules
+              path: rules.conf           
+        {{- end }}
         {{- with .Values.deployment.volumes }}
         {{- tpl (toYaml .) $ | nindent 8 }}            
         {{- end }}
