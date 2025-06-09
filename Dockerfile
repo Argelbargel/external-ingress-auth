@@ -29,6 +29,7 @@ ENV DEV_MODE=false \
     LDAP_SEARCH_FILTER="(sAMAccountName={username})" \
     LDAP_MANAGER_DN="<manager-dn-username>" \
     LDAP_MANAGER_PASSWORD="<manager-dn-password>" \
+    AUTHORIZATION_RULES_PATH="$HOME/config/rules.conf" \
     AUTHORIZATION_INGRESS_RULES="disabled" \
     AUTH_CACHE_TTL_SECONDS=15 \
     BRUTE_FORCE_PROTECTION_ENABLED="true" \
