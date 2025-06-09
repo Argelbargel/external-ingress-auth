@@ -45,9 +45,18 @@ class AuthorizationRule:
     def applies(self, host:str, ip:str, method:str, path:str) -> bool:
         ip = ip_address(ip)
 
-        if ANY not in self._hosts and host.lower() not in self._hosts:
-            self._log.trace("rule does not apply to host", host=host, rule=self)
-            return False
+        if ANY not in self._hosts:
+            applies = False
+            host = PurePath(host)
+            for h in self._hosts:
+                if host.full_match(h):
+                    self._log.trace("rule applies to host", host=host, rule=self)
+                    applies = True
+                    break
+
+            if not applies:
+                self._log.trace("rule does not apply to host", host=host, rule=self)
+                return False
 
         for r in self._ranges:
             if ip in r:

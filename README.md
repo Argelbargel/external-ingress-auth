@@ -79,7 +79,7 @@ Authorization rules are declared in the format `<hosts>:<ip-ranges>:<methods>:<p
 
 | Rule element   | Default-Value | Description |
 |----------------|---------------|-------------|
-| `<hosts>`      | `**`          | comma-separated list of ingress-hosts the rule applies to. The default value `**` applies to all ingress-hosts |
+| `<hosts>`      | `**`          | comma-separated list of ingress-hosts the rule applies to. Use `*` to match subdomains, e.g. `*.example.com` matches `sub.example.com` (but not example.com itself). The default value `**` applies to all ingress-hosts |
 | `<ip-ranges>`  | `**`          | comma-separated list of ip-ranges. For the rule to apply, the remote-ip from which the request is made must be within the given ranges. The default value `**` applies to any remote-ip |
 | `<methods>`    | `**`          | comma-separated list of http-methods. The rule only applies if a request is made with the given methods. The default-value `**` applies to any method |
 | `<paths>`      | `**`          | comma-separated list of requested paths the rule applies to. The pattern is evaluated using [PurePath#full_match()](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match), so `/public/**` matches any path below `/public/` and `/downloads/*` matches for any file below the path `/downloads/`. The defaul-value `**` matches any path |

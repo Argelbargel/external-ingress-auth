@@ -66,6 +66,21 @@ class TestPublicRule(unittest.TestCase):
         self.assertEqual(set(), groups)
 
 
+class TestHostsRule(unittest.TestCase):
+    RULE = AuthorizationRule(hosts=["*.example.com", "test.org"])
+
+    def test_applies(self):
+        self.assertTrue(self.RULE.applies("sub.example.com", "127.0.0.1", "GET", "/"))
+        self.assertTrue(self.RULE.applies("another.example.com", "127.0.0.1", "GET", "/"))
+        self.assertFalse(self.RULE.applies("example.com", "127.0.0.1", "GET", "/"))
+        self.assertTrue(self.RULE.applies("test.org", "127.0.0.1", "GET", "/"))
+        self.assertFalse(self.RULE.applies("sub.test.org", "127.0.0.1", "GET", "/"))
+        self.assertFalse(self.RULE.applies("localhost", "127.0.0.1", "GET", "/"))
+        self.assertFalse(self.RULE.applies("another-example.com", "127.0.0.1", "GET", "/"))
+
+    def test_is_public(self):
+        self.assertFalse(self.RULE.is_public())
+
 class TestRangesRule(unittest.TestCase):
     RULE = AuthorizationRule(ranges=["192.168.0.0/24", "172.12.0.0/24"])
 
