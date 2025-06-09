@@ -5,6 +5,7 @@ import unittest
 from os.path import dirname, isfile
 from time import sleep
 from tempfile import NamedTemporaryFile
+from watchdog.observers import Observer
 
 from .authorization import AuthorizationRule, AuthorizationRuleset, AuthorizationRulesParser, AuthorizationRulesFile, ANY, AND, DEFAULT_RULE, OR, PUBLIC
 
@@ -362,12 +363,13 @@ class TestAuthorizationRulesFile(unittest.TestCase):
             self.assertEqual((DEFAULT_RULE,), file.rules())
 
     def test_existing_file(self):
+        observer = Observer()
         tmpfile = NamedTemporaryFile(delete=False, mode='w+', encoding="utf-8")
         try:
             tmpfile.write("**:**:HEAD,GET:/public/**:<public>\nexample.com:**:GET:**:**:group")
             tmpfile.close()
 
-            rules_file = AuthorizationRulesFile(tmpfile.name)
+            rules_file = AuthorizationRulesFile(tmpfile.name, observer)
             self.assertEqual(
                 (
                     AuthorizationRule(methods=["HEAD", "GET"], paths=["/public/**"], users=[PUBLIC]),
@@ -377,15 +379,17 @@ class TestAuthorizationRulesFile(unittest.TestCase):
                 rules_file.rules()
             )
         finally:
+            observer.stop()
             unlink(tmpfile.name)
 
     def test_update(self):
+        observer = Observer()
         tmpfile = NamedTemporaryFile(delete=False, mode='w+', encoding="utf-8")
         try:
             tmpfile.write("**:**:HEAD,GET:/public/**:<public>\n")
             tmpfile.close()
 
-            rules_file = AuthorizationRulesFile(tmpfile.name)
+            rules_file = AuthorizationRulesFile(tmpfile.name, observer)
             self.assertEqual(
                 (
                     AuthorizationRule(methods=["HEAD", "GET"], paths=["/public/**"], users=[PUBLIC]),
@@ -409,15 +413,17 @@ class TestAuthorizationRulesFile(unittest.TestCase):
             )
 
         finally:
+            observer.stop()
             unlink(tmpfile.name)
 
     def test_update_removed(self):
+        observer = Observer()
         tmpfile = NamedTemporaryFile(delete=False, mode='w+', encoding="utf-8")
         try:
             tmpfile.write("**:**:HEAD,GET:/public/**:<public>\n")
             tmpfile.close()
 
-            rules_file = AuthorizationRulesFile(tmpfile.name)
+            rules_file = AuthorizationRulesFile(tmpfile.name, observer)
             self.assertEqual(
                 (
                     AuthorizationRule(methods=["HEAD", "GET"], paths=["/public/**"], users=[PUBLIC]),
@@ -433,14 +439,16 @@ class TestAuthorizationRulesFile(unittest.TestCase):
             self.assertEqual((DEFAULT_RULE, ), rules_file.rules())
 
         finally:
+            observer.stop()
             if isfile(tmpfile.name):
                 unlink(tmpfile.name)
 
     def test_update_created(self):
+        observer = Observer()
         with NamedTemporaryFile(delete=False, mode='w+', encoding="utf-8") as f:
-            file = dirname(f.name) + "/rules"
+            file = dirname(f.name) + "/rules.conf"
             try:
-                rules_file = AuthorizationRulesFile(file)
+                rules_file = AuthorizationRulesFile(file, observer)
                 self.assertEqual((DEFAULT_RULE, ), rules_file.rules())
 
                 with open(file, 'w+', encoding='utf-8') as r:
@@ -456,6 +464,7 @@ class TestAuthorizationRulesFile(unittest.TestCase):
                     rules_file.rules()
                 )
             finally:
+                observer.stop()
                 if isfile(file):
                     unlink(file)
 

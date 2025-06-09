@@ -1,6 +1,6 @@
 import re
 from os import makedirs
-from os.path import dirname, isfile
+from os.path import dirname, isfile, realpath
 from ipaddress import ip_address, ip_network
 from collections.abc import Iterable
 from pathlib import PurePath
@@ -270,7 +270,7 @@ class AuthorizationRulesFile(AuthorizationRules, FileSystemEventHandler):
 
     def on_any_event(self, event:FileSystemEvent):
         self._log.trace(f"Received filesystem-event {event}...")
-        if event.event_type in self.EVENTS and event.src_path == self._path:
+        if event.event_type in self.EVENTS and realpath(event.src_path) == realpath(self._path):
             self._log.debug(f"Received filesystem-event {event} for rules-file...")
             current_rules = self._rules
             try:
