@@ -9,7 +9,7 @@ config:
   env: {}
   # -- further configuration-sources (e.g. secrets for manager-dn and password); can be templated e.g to use helm-values
   envFrom: []
-  # -- authorization rules (see #authorization-rules)
+  # -- authorization rules (see https://github.com/Argelbargel/external-ldap-auth/tree/main/charts/auth-service#authorization-rules)
   rules: []
   # rules are defined in the following way:
   # - hosts: 
