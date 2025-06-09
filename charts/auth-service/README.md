@@ -19,7 +19,7 @@ It works perfect with NGINX ingress controller via [External Authentication](htt
 | commonLabels | object | `{}` | common labels for all resources deployed by this chart |
 | config.env | object | `{}` | environment-variables for configuration of the service; can be templated e.g to use helm-values    see https://github.com/Argelbargel/external-ldap-auth#environment-variables for allowed keys and values |
 | config.envFrom | list | `[]` | further configuration-sources (e.g. secrets for manager-dn and password); can be templated e.g to use helm-values |
-| config.rules | list | `[]` | authorization rules (see #authorization-rules) |
+| config.rules | list | `[]` | authorization rules (see https://github.com/Argelbargel/external-ldap-auth/tree/main/charts/auth-service#authorization-rules) |
 | deployment.annotations | object | `{}` | additional annotations specific to the deployment resource |
 | deployment.initContainers | list | `[]` | initContainers for the deployment; can be templated e.g to use helm-values |
 | deployment.labels | object | `{}` | additional labels specific to the deployment resource |
