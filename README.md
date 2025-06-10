@@ -41,7 +41,7 @@ Except for authorization-rules, configuration is mainly done through environment
 
 | Variable         | Required/Default-Value | Description                          |
 |--------------------------|------------------------|------------------------------|
-| AUTHORIZATION_RULES_FILE | optional       | file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules) |
+| AUTHORIZATION_RULES_PATH | optional       | path to a file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules) |
 | AUTHORIZATION_INGRESS_RULES | `disabled`  | whether [authorization](#authorization-rules) rules may be supplied by headers sent via headers through [ingress-configuration](#ingress-configuration-of-authorization-rules). When set to `disabled`, rules sent by the ingress are completely ignored. To allow an ingress to further restrict the rules provided the authorization file, set the value to `append`. To allow ingresses to override the default authorization file, set the value to `override`. |
 
 ### Brute-Force-Protection
@@ -71,7 +71,7 @@ Except for authorization-rules, configuration is mainly done through environment
 
 ### Authorization Rules
 
-The authentication backend is solely used to authenticate a user's credentials and to provide information about the user's group-membership. All further authorization-restrictions (or lack thereof) are configured authorization rules provided by the file specified in `AUTHORIZATION_RULES_FILE` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
+The authentication backend is solely used to authenticate a user's credentials and to provide information about the user's group-membership. All further authorization-restrictions (or lack thereof) are configured authorization rules provided by the file specified in `AUTHORIZATION_RULES_PATH` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
 
 #### Authorization Rule Format
 
