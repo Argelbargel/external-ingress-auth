@@ -46,12 +46,13 @@ blocked_ips = Counter('blocked_ips', 'IPs blocked by brute-force-protection', ['
 logs = Logs('main')
 
 if AUTHORIZATION_INGRESS_RULES == "override":
-    logs.warning(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - ingresses may completely override authorization required by default-rules!")
+    logs.warning(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - ingresses may completely override authorization required by default-rules.")
 elif AUTHORIZATION_INGRESS_RULES == "append":
     logs.info(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - rules provided by ingresses only take effect if none of the default-rules apply.")
-elif AUTHORIZATION_INGRESS_RULES != "disabled":
-    logs.warning(f"Invalid value '{AUTHORIZATION_INGRESS_RULES}' for AUTHORIZATION_INGRESS_RULES provided!")
 else:
+    if AUTHORIZATION_INGRESS_RULES != "disabled":
+        logs.warning(f"Invalid value '{AUTHORIZATION_INGRESS_RULES}' for AUTHORIZATION_INGRESS_RULES provided!")
+        AUTHORIZATION_INGRESS_RULES = "disabled"
     logs.info(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - rules provided by ingresses are ignored.")
 
 
@@ -139,8 +140,8 @@ def _authenticate_(username, password):
 @cached(authCache)
 def _find_rule(host:str, ip:str, method:str, path:str) -> AuthorizationRule:
     rules = defaultAuthRules
-    if AUTHORIZATION_INGRESS_RULES and 'AUTHORIZATION_RULES' in request.headers:
-        customRules = AuthorizationRulesParser().parse(request.headers.get('AUTHORIZATION_RULES'))
+    if AUTHORIZATION_INGRESS_RULES != "disabled" and 'X-Authorization-Rules' in request.headers:
+        customRules = AuthorizationRulesParser().parse(request.headers.get('X-Authorization-Rules'))
         if AUTHORIZATION_INGRESS_RULES == "override":
             logs.debug("overriding default-rules with custom-rules", customRules=customRules, defaultRules=defaultAuthRules)
             rules = customRules.combine(defaultAuthRules)

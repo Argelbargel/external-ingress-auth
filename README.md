@@ -218,7 +218,7 @@ metadata:
   name: auth-headers
   namespace: default
 data:"
-  Authorization-Rules: "<rule1> <rule2>"
+  X-Authorization-Rules: "<rule1> <rule2>"
 ```
 
 Be aware that you have to reference the ConfigMap using `<namespace>/<name>` in `nginx.ingress.kubernetes.io/auth-proxy-set-headers` - otherwise the ConfigMap will be searched in the ingresses namespace.
