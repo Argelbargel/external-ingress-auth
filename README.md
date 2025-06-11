@@ -121,7 +121,7 @@ The rule `example.com:**:**:**:**:Testers,Reviewers` restricts requests to `exam
 
 #### Default Authorization Rule
 
-The default authorization rule is always `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the string `<authenticated>` instead of the full rule-declaration above.
+The default authorization rule is always `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the string `<authenticated>` instead of the full rule-declaration above. To make the this fallback explicit, it is recommended to always end your rules list with `<authenticated>`.
 
 #### Authorization File Format
 
@@ -129,13 +129,14 @@ The authorization file may contain multiple rules separated by any ([unescaped](
 
 Thus you may either specify multiple rules on one line:
 
-`**:**:**:/public:<public> **:**:**:/admin/**:admin`
+`**:**:**:/public:<public> **:**:**:/admin/**:admin <authenticated>`
 
 Or one rule per line:
 
 ```plain
 **:**:**:/public:<public>
 **:**:**:/admin/**:admin
+<authenticated>
 ```
 
 Rules are evaluated in the order that they are provided. The first rule matching all request-parameters (ingress-hostname, remote-ip, request-method and requested-path) is used to authorize the request.
