@@ -121,7 +121,9 @@ The rule `example.com:**:**:**:**:Testers,Reviewers` restricts requests to `exam
 
 #### Default Authorization Rule
 
-If no other rules match (or you did not provide any), requests are authorized against the rule `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the string `<authenticated>` instead of the full rule-declaration above. To make the this fallback explicit, it is recommended to always end your rules list with `<authenticated>`.
+If no other rules match (or you did not provide any), requests are authorized against the rule `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the string `<authenticated>` instead of the full rule-declaration above. 
+
+To make the this fallback explicit, it is recommended to always end your rules list with `<authenticated>`.
 
 #### Authorization File Format
 
