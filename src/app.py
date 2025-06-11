@@ -145,7 +145,8 @@ def _find_rule(host:str, ip:str, method:str, path:str) -> Rule:
             ingress_rules = parse_rules(request.headers.get('X-Authorization-Rules'))
             if ingress_rules:
                 logs.info("using authorization-rules provided by ingress...", host=host)
-                logs.debug("authorization-rules provided by ingress", host=host, rules=rules)
+                logs.debug("authorization-rules provided by ingress", host=host, rules=ingress_rules)
+                rules = ingress_rules
 
     rule = rules.find_rule(host, ip, method, path)
     logs.info(f"Authenticating request using rule {rule}...", host=host, ip=ip, method=method, path=path)
