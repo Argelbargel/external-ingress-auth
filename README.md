@@ -84,12 +84,12 @@ Authorization rules are declared in the format `<hosts>:<ip-ranges>:<methods>:<p
 | `<ip-ranges>`  | `**`          | comma-separated list of ip-ranges. For the rule to apply, the remote-ip from which the request is made must be within the given ranges. The default value `**` applies to any remote-ip |
 | `<methods>`    | `**`          | comma-separated list of http-methods. The rule only applies if a request is made with the given methods. The default-value `**` applies to any method |
 | `<paths>`      | `**`          | comma-separated list of requested paths the rule applies to. The pattern is evaluated using [PurePath#full_match()](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match), so `/public/**` matches any path below `/public/` and `/downloads/*` matches for any file below the path `/downloads/`. The defaul-value `**` matches any path |
-| `<users>`      | `**`          | comma-separated list of usernames. To be authorized, an authenticated user must be in this list and/or one of the groups specified (see `<users-groups-operator>`). To allow public/unauthenticated-access to a resource, use the special value `<public>`. If the list contains `<public>`, any further settings concerning group-membership etc. are ignored. The default-value `**` allows access for all authenticated users |
+| `<users>`      | `<authenticated>` | comma-separated list of usernames. To be authorized, an authenticated user must be in this list and/or one of the groups specified (see `<users-groups-operator>`). To allow public/unauthenticated-access to a resource, use the special value `<public>`. If the list contains `<public>`, any further settings concerning group-membership etc. are ignored. The default-value `<authenticated>`, which is just and alias for `**`, allows access for all authenticated users |
 | `<groups>`     | `**`          | comma-separated list of groups. To be authorized, an authenticated user must be member of one or all of the specified groups - see `<groups-operator>` - and possibly in the list of users (see `<users-groups-operator>`). The default-value `**` allows access for all authenticated users |
 | `<groups-operator>`| `OR`      | specifies whether an authenticated user must be member of all groups specified in `<groups>` (`AND`) or any of them (`OR`) |
-| `<users-groups-operator>` | `AND` | specifies wheter an authenicated user match the `<users>` and `<groups>` part of the rule (`AND`) or only one of them (`OR`) |
+| `<users-groups-operator>` | `AND` | specifies whether an authenticated user match the `<users>` and `<groups>` part of the rule (`AND`) or only one of them (`OR`) |
 
-Note that if any of the list-elements above contains the wildcard `**` any other element in the list is ignored (so `**,value` is equivalent to `**`).
+Note that if any of the list-elements above contains the wildcards `**` or `<authenticated>` any other element in the list is ignored (so `**,value` is equivalent to `**`).
 
 #### Examples
 
@@ -99,9 +99,9 @@ The rule `**:**:**:/public/**:<public>` grants public access to anything below `
 
 ##### Restrict access to users in some groups
 
-The rule `**:**:**:**:**:group1,group2` restricts access to any resource to authenticated users who are member of `group1` *or* `group2`
+The rule `**:**:**:**:<authenticated>:group1,group2` restricts access to any resource to authenticated users who are member of `group1` *or* `group2`
 
-The rule `**:**:**:**:**:group1,group2:AND` restricts access to any resource ot authenticated users who are member of `group1` *and* `group2`
+The rule `**:**:**:**:<authenticated>:group1,group2:AND` restricts access to any resource or authenticated users who are member of `group1` *and* `group2`
 
 ##### Restrict access to specific users
 
@@ -117,11 +117,11 @@ The rule `**:**:DELETE:/admin/**:admin,operator:cleaners:OR:AND` allows access f
 
 The rule `example.com,*.example.com:172.100.0.1/24:**:**:<public>` allows public access to `example.com` and all direct subdomains from within the range `172.100.0.1 - 172.100.0.254`
 
-The rule `example.com:**:**:**:**:Testers,Reviewers` restricts requests to `example.com` to users in either group `Testers` or `Reviewers`
+The rule `example.com:**:**:**:<authenticated>:Testers,Reviewers` restricts requests to `example.com` to users in either group `Testers` or `Reviewers`
 
 #### Default Authorization Rule
 
-If no other rules match (or you did not provide any), requests are authorized against the rule `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the string `<authenticated>` instead of the full rule-declaration above. 
+If no other rules match (or you did not provide any), requests are authorized against the rule `**:**:**:**:<authenticated>:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the shortcut `<authenticated>` for this default rule instead of the full rule-declaration above.
 
 To make the this fallback explicit, it is recommended to always end your rules list with `<authenticated>`.
 

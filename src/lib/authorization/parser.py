@@ -3,7 +3,7 @@ from collections.abc import Iterable
 
 from ..logs import Logs
 
-from .rule import AUTHENTICATED, Rule
+from .rule import DEFAULT_RULE, Rule
 from .rules import RuleSet
 
 PARTS_SEP = ":"
@@ -35,7 +35,7 @@ def parse_rule(rule:str) -> Rule:
     
     rule = rule.strip()
     if rule.lower() == "<authenticated>":
-        return AUTHENTICATED
+        return DEFAULT_RULE
     
     parts = _split(rule, PARTS_SEP, maxsplit=8)
     parts_len = len(parts)

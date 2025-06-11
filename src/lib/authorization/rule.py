@@ -5,11 +5,11 @@ from pathlib import PurePath
 from ..logs import Logs
 
 
+AND = "and"
 ANY = "**"
+AUTHENTICATED = "<authenticated>"
 PUBLIC = "<public>"
 OR = "or"
-AND = "and"
-
 
 class Rule:
     def __init__(self, hosts:Iterable[str]=None, ranges:Iterable[str]=None,
@@ -22,7 +22,7 @@ class Rule:
         self._ranges = set([ip_network('0.0.0.0/0')])
         self._methods = set([ANY])
         self._paths = set([ANY])
-        self._users = set([ANY])
+        self._users = set([AUTHENTICATED])
         self._groups = set([ANY])
         self._groups_op = OR
         self._users_groups_op = AND
@@ -40,7 +40,7 @@ class Rule:
             self._paths = set(paths)
 
         if PUBLIC not in (users or []):
-            if users is not None and ANY not in users:
+            if users is not None and ANY not in users and AUTHENTICATED not in users:
                 self._users = set(users)
             if groups is not None and ANY not in groups:
                 self._groups = set(groups)
@@ -93,7 +93,7 @@ class Rule:
             self._log.info('Resource is public', rule=self)
             return True, set()
 
-        authorized = ANY in self._users or username.lower() in self._users
+        authorized = AUTHENTICATED in self._users or username.lower() in self._users
         if not authorized and self._users_groups_op == AND:
             self._log.debug("User is not authorized", username=username, rule=self)
             return False, set()
@@ -149,4 +149,4 @@ class Rule:
         return self.__repr__()
 
 
-AUTHENTICATED = Rule()
+DEFAULT_RULE = Rule()

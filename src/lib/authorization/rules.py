@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
 from ..logs import Logs
-from .rule import AUTHENTICATED, Rule
+from .rule import DEFAULT_RULE, Rule
 
 
 class Rules:
@@ -13,8 +13,8 @@ class Rules:
             if rule.applies(host, ip, method, path):
                 self._log.debug("found rule matching the request", host=host, ip=ip, method=method, path=path, rule=rule)
                 return rule
-        self._log.info("no rule found matching the request, falling back to default-rule (user must be authenticated)", host=host, ip=ip, method=method, path=path, rule=AUTHENTICATED)
-        return AUTHENTICATED
+        self._log.info("no rule found matching the request, falling back to default-rule (user must be authenticated)", host=host, ip=ip, method=method, path=path, rule=DEFAULT_RULE)
+        return DEFAULT_RULE
 
     def rules(self) -> Iterable[Rule]:
         return []

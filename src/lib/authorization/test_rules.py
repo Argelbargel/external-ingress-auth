@@ -3,7 +3,7 @@ environ['LOG_LEVEL'] = 'TRACE'
 
 import unittest
 
-from .rule import AUTHENTICATED, Rule
+from .rule import DEFAULT_RULE, Rule
 from .rules import RuleSet
 
 unittest.util._MAX_LENGTH=2000
@@ -26,7 +26,7 @@ class TestRuleset(unittest.TestCase):
 
     def test_find_rules_falls_back_to_default_rule(self):
         ruleset = RuleSet()
-        self.assertEqual(AUTHENTICATED, ruleset.find_rule("example.com", "127.0.0.1", "GET", "/public/file"))
+        self.assertEqual(DEFAULT_RULE, ruleset.find_rule("example.com", "127.0.0.1", "GET", "/public/file"))
 
     def test_find_rules(self):
         ruleset = RuleSet(RULE1, RULE2, RULE3)

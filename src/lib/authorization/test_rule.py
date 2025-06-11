@@ -2,7 +2,7 @@ import unittest
 from os import environ
 environ['LOG_LEVEL'] = 'TRACE'
 
-from .rule import Rule, ANY, AND, OR, PUBLIC
+from .rule import Rule, AND, ANY, AUTHENTICATED, OR, PUBLIC
 
 unittest.util._MAX_LENGTH=2000
 
@@ -23,7 +23,7 @@ class TestDefaultRule(unittest.TestCase):
     RULE = Rule()
 
     def test_default_values(self):
-        self.assertEqual(self.RULE, Rule(['**'], ['**'], ['**'], ['**'], ['**'], ['**'], OR, AND))
+        self.assertEqual(self.RULE, Rule(['**'], ['**'], ['**'], ['**'], [AUTHENTICATED], ['**'], OR, AND))
 
     def test_applies(self):
         self.assertTrue(self.RULE.applies("example.com", '127.0.0.1', "GET", "/"))
