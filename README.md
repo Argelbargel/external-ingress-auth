@@ -42,7 +42,7 @@ Except for authorization-rules, configuration is mainly done through environment
 | Variable         | Required/Default-Value | Description                          |
 |--------------------------|------------------------|------------------------------|
 | AUTHORIZATION_RULES_PATH | optional       | path to a file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules) |
-| AUTHORIZATION_INGRESS_RULES_ENABLED | `false`  | whether [authorization](#authorization-rules) rules may be supplied by ingresses via headers or not. **See [security considerations concerning authorization rules provided by ingresses](#security-considerations) before enabling this!** |
+| AUTHORIZATION_INGRESS_RULES_ENABLED | `false`  | whether [authorization rules](#authorization-rules) can be provided by ingresses or not. **See [security considerations concerning authorization rules provided by ingresses](#security-considerations) before enabling this!** |
 | AUTHORIZATION_INGRESS_RULES_SECRET | required | secret key an ingress must provide when sending authorization-rules to the service. See [security considerations concerning authorization rules provided by ingresses](#security-considerations) for details. If no value is provided, the service generates a random secret on every (re-)start which can not be accessed. |
 
 ### Brute-Force-Protection
