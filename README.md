@@ -189,7 +189,7 @@ Depending on the [auth-service's configuration](#authorization) you can provide 
 
 #### Security considerations
 
-Ingress-specific rules are sent to the service using http headers. The service cannot discern between headers sent by the ingress-controller or by a client and passed through the ingress. Thus you have to ensure that *ALL* ingresses using the auth-service send the header `X-Authorization-Rules` when enabling ingress-specific authorization rules.
+Ingress-specific rules are sent to the service using http headers. The service cannot discern between headers sent by the ingress-controller or by a client and passed through the ingress. Thus you have to ensure that **all** ingresses using external ldap authentication send the header `X-Authorization-Rules` when enabling ingress-specific authorization rules.
 
 The requirement for the secret to be sent in the header `X-External-Auth-Secret` alongside the authorization rules for them to take effect is mainly meant as a reminder to ensure every ingress uses the annotation `nginx.ingress.kubernetes.io/auth-proxy-set-headers` and a ConfigMap containing the `X-Authorization-Header`. Everyone who has access to the secret's value (e.g. can access Secrets or whichever resource the secret's value is stored in in your cluster) will be able to send manipulated authorization rules *unless your ingresses do provide a value for `X-Authorization-Rules` in the ingresses configuration*.
 
