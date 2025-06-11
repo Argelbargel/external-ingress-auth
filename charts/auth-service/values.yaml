@@ -9,6 +9,18 @@ config:
   env: {}
   # -- further configuration-sources (e.g. secrets for manager-dn and password); can be templated e.g to use helm-values
   envFrom: []
+  ingressRules:
+    # enables rules provided by ingresses via header X-Authorization-Rules
+    enabled: false
+    secret:
+      value: "{{ randBytes 32 }}"
+      external:
+        # -- if set to a non-empty value, the secret validating authorization-rules from the ingress
+        #    is injected from the given secret;  otherwise a Secret is created with the value above
+        #    (can be templated)
+        name: ""
+        # -- key in the secret where the value for the ingress-secret is stored (can be templated)
+        key: "AUTHORIZATION_INGRESS_RULES_SECRET"
   # -- authorization rules (see https://github.com/Argelbargel/external-ldap-auth/tree/main/charts/auth-service#authorization-rules)
   rules: []
   # rules are defined in the following way:

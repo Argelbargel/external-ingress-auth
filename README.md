@@ -42,7 +42,8 @@ Except for authorization-rules, configuration is mainly done through environment
 | Variable         | Required/Default-Value | Description                          |
 |--------------------------|------------------------|------------------------------|
 | AUTHORIZATION_RULES_PATH | optional       | path to a file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules) |
-| AUTHORIZATION_INGRESS_RULES | `disabled`  | whether [authorization](#authorization-rules) rules may be supplied by headers sent via headers through [ingress-configuration](#ingress-configuration-of-authorization-rules). When set to `disabled`, rules sent by the ingress are completely ignored. To allow an ingress to further restrict the rules provided the authorization file, set the value to `append`. To allow ingresses to override the default authorization file, set the value to `override`. |
+| AUTHORIZATION_INGRESS_RULES_ENABLED | `false`  | whether [authorization](#authorization-rules) rules may be supplied by ingresses via headers or not. **See [security considerations concerning authorization rules provided by ingresses](#security-considerations) before enabling this!** |
+| AUTHORIZATION_INGRESS_RULES_SECRET | required | secret key an ingress must provide when sending authorization-rules to the service. See [security considerations concerning authorization rules provided by ingresses](#security-considerations) for details. If no value is provided, the service generates a random secret on every (re-)start which can not be accessed. |
 
 ### Brute-Force-Protection
 
@@ -94,7 +95,7 @@ Note that if any of the list-elements above contains the wildcard `**` any other
 
 ##### Allow public, unauthenticated access
 
-The rule `**:**:**:/public/**:<public>` grants public access to anything below `/public/` on any host.
+The rule `**:**:**:/public/**:<public>` grants public access to anything below `/public/` on any host without authenticating against the ldap-server.
 
 ##### Restrict access to users in some groups
 
@@ -120,7 +121,7 @@ The rule `example.com:**:**:**:**:Testers,Reviewers` restricts requests to `exam
 
 #### Default Authorization Rule
 
-The default authorization rule is always `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized.
+The default authorization rule is always `**:**:**:**:**:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the string `<authenticated>` instead of the full rule-declaration above.
 
 #### Authorization File Format
 
@@ -137,6 +138,10 @@ Or one rule per line:
 **:**:**:/admin/**:admin
 ```
 
+Rules are evaluated in the order that they are provided. The first rule matching all request-parameters (ingress-hostname, remote-ip, request-method and requested-path) is used to authorize the request.
+
+You may add comments to the rules-file. Every line starting with `#` is regarded as a comment.
+
 #### Escaping of separator characters
 
 Any of the special separator characters used in the rules definition (`:`, `,` and whitespace) can be escaped using `\<character`, e.g. `User\ containing a \:\ colon`.
@@ -145,7 +150,7 @@ Any of the special separator characters used in the rules definition (`:`, `,` a
 
 After installing the service in your cluster you have to configure your Ingress-resource to use the service for external authentication. [Nginx Ingress Controllor provides a simple example for this setup](https://kubernetes.github.io/ingress-nginx/examples/auth/external-auth/).
 
-The following assumes you're using ingress-nginx 0.9.0 or newer. For a detailed description of the annotations used see https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication
+The following assumes you're using ingress-nginx 0.9.0 or newer. For a detailed description of the annotations used see [nginx-ingress-controller annotations](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
 ### Authentication
 
@@ -180,7 +185,19 @@ spec:
 
 ### Ingress Configuration of Authorization Rules
 
-Depending on the [auth-service's configuration](#authorization) you can pass additional [authorization rules](#authorization-rules) from the ingress or override those provided by in the config-file of the service.
+Depending on the [auth-service's configuration](#authorization) you can provide ingress-specific [authorization rules](#authorization-rules) replacing those declared in the config-file of the service.
+
+#### Security considerations
+
+Ingress-specific rules are sent to the auth-service using http headers. The external-ldap-auth-service cannot discern between headers sent by the ingress-controller or by a client and passed through the ingress. Thus you have to ensure that *ALL* ingresses using the auth-service send the header `X-Authorization-Rules` when enabling ingress-specific authorization rules.
+
+The requirement for the secret to be sent in the header `X-External-Auth-Secret` alongside the authorization rules for them to take effect is mainly meant as a reminder to ensure every ingress uses the annotation `nginx.ingress.kubernetes.io/auth-proxy-set-headers` and a ConfigMap containing the `X-Authorization-Header`. Everyone who has access to the secret's value (e.g. can access Secrets or whichever resource the secret's value is stored in in your cluster) will be able to send manipulated authorization rules *unless your ingresses do provide a value for `X-Authorization-Rules` in the ingresses configuration*.
+
+To indicate that the rules configured in the auth-services should be used by the ingress it is sufficient to sent an empty value in `X-Authorization-Rules`; setting the value to e.g. `# use default rules` is more concise and readable, though.
+
+Non-empty, valid ingress-specific authorization rules completely replace those declared in the config-file of the service for requests passed to the service by the ingress. If none of the rules provided by the ingress match, the [default authorization rule](#default-authorization-rule) is used to authorize a request. Nonetheless it is recommended to end your rules list with `<authenticated>` to make that fact explicit.
+
+#### Ingress configuration
 
 To provide additional rules, you have to specify them in a ConfigMap:
 

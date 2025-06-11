@@ -1,4 +1,6 @@
 from os import getenv
+from random import choices
+from string import ascii_letters, digits
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -9,17 +11,16 @@ from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import Counter
 
 from lib.authentication import LDAPAuthentication
-from lib.authorization import AuthorizationRule, AuthorizationRulesFile, AuthorizationRulesParser
+from lib.authorization import Rule, RulesFile, parse_rules
 from lib.bruteforce import BruteForce
 from lib.logs import Logs
 
 
 # --- Parameters --------------------------------------------------------------
-AUTHORIZATION_INGRESS_RULES = getenv('AUTHORIZATION_INGRESS_RULES', 'disabled').lower()
 PAGE_FOOTER = getenv('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ldap-auth" target="_blank">Powered by External LDAP Authentication</a></small>')
 
 # --- Authentication & Authorization ------------------------------------------
-defaultAuthRules = AuthorizationRulesFile(getenv("AUTHORIZATION_RULES_PATH", "./config/rules.conf"))
+default_rules = RulesFile(getenv("AUTHORIZATION_RULES_PATH", "./config/rules.conf"))
 authCache = TTLCache(float('inf'), float(getenv("AUTH_CACHE_TTL_SECONDS", "15")))
 
 # --- LDAP-Connection ---------------------------------------------------------
@@ -45,15 +46,11 @@ blocked_ips = Counter('blocked_ips', 'IPs blocked by brute-force-protection', ['
 # --- Logging -----------------------------------------------------------------
 logs = Logs('main')
 
-if AUTHORIZATION_INGRESS_RULES == "override":
-    logs.warning(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - ingresses may completely override authorization required by default-rules.")
-elif AUTHORIZATION_INGRESS_RULES == "append":
-    logs.info(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - rules provided by ingresses only take effect if none of the default-rules apply.")
-else:
-    if AUTHORIZATION_INGRESS_RULES != "disabled":
-        logs.warning(f"Invalid value '{AUTHORIZATION_INGRESS_RULES}' for AUTHORIZATION_INGRESS_RULES provided!")
-        AUTHORIZATION_INGRESS_RULES = "disabled"
-    logs.info(f"AUTHORIZATION_INGRESS_RULES is set to '{AUTHORIZATION_INGRESS_RULES}' - rules provided by ingresses are ignored.")
+# --- Authorizatin-Rules from Ingresses
+INGRESS_RULES_ENABLED = getenv('AUTHORIZATION_INGRESS_RULES_ENABLED', 'false').lower() == 'true'
+INGRESS_RULES_SECRET  = getenv('AUTHORIZATION_INGRESS_RULES_SECRET', '') or ''.join(choices(ascii_letters + digits, k=32))
+if INGRESS_RULES_ENABLED:
+    logs.warning("authorization-rules from ingresses are enabled")
 
 
 def _request_host():
@@ -138,16 +135,17 @@ def _authenticate_(username, password):
 
 
 @cached(authCache)
-def _find_rule(host:str, ip:str, method:str, path:str) -> AuthorizationRule:
-    rules = defaultAuthRules
-    if AUTHORIZATION_INGRESS_RULES != "disabled" and 'X-Authorization-Rules' in request.headers:
-        customRules = AuthorizationRulesParser().parse(request.headers.get('X-Authorization-Rules'))
-        if AUTHORIZATION_INGRESS_RULES == "override":
-            logs.debug("overriding default-rules with custom-rules", customRules=customRules, defaultRules=defaultAuthRules)
-            rules = customRules.combine(defaultAuthRules)
-        elif AUTHORIZATION_INGRESS_RULES == "append":
-            logs.debug("appending custom-rules to default-rules", defaultRules=defaultAuthRules, customRules=customRules)
-            rules = defaultAuthRules.combine(customRules)
+def _find_rule(host:str, ip:str, method:str, path:str) -> Rule:
+    rules = default_rules
+
+    if INGRESS_RULES_ENABLED and 'X-Authorization-Rules' in request.headers:
+        if 'X-External-Auth-Secret' not in request.headers or request.headers.get('X-External-Auth-Secret') != INGRESS_RULES_SECRET:
+            logs.warning("ignoring authorization rules from ingress as secret is missing or invalid", host=host)
+        else:
+            ingress_rules = parse_rules(request.headers.get('X-Authorization-Rules'))
+            if ingress_rules:
+                logs.info("using authorization-rules provided by ingress...", host=host)
+                logs.debug("authorization-rules provided by ingress", host=host, rules=rules)
 
     rule = rules.find_rule(host, ip, method, path)
     logs.info(f"Authenticating request using rule {rule}...", host=host, ip=ip, method=method, path=path)

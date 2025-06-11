@@ -5,8 +5,7 @@ metadata:
   name: {{ template "external-ldap-auth.name" . }}
   namespace: "{{ .Release.Namespace }}"
   labels: {{- include "external-ldap-auth.labels" (list . .Values.deployment.labels) | nindent 4 }}
-  annotations: 
-    {{- include "external-ldap-auth.annotations" (list . .Values.deployment.annotations) | nindent 4 }}  
+  annotations: {{- include "external-ldap-auth.annotations" (list . .Values.deployment.annotations) | nindent 4 }}  
 spec:
   replicas: {{.Values.deployment.replicas}}
   selector:
@@ -29,18 +28,30 @@ spec:
           ports:
             - name: http
               containerPort: 9000
-          {{- with fromYaml (tpl (toYaml .Values.config.env) $) }}
           env:
           - name: AUTHORIZATION_RULES_PATH
             value: /external-ldap-auth/config/rules.conf
+          {{- with .Values.config.ingressRules }}
+          {{- if .enabled }}
+          - name: AUTHORIZATION_INGRESS_RULES_ENABLED
+            value: "true"
+          - name: AUTHORIZATION_INGRESS_RULES_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "{{ if .secret.external.name }}{{ tpl .secret.external.name $ }}{{ else }}{{ template "external-ldap-auth.name" $ }}-rules-secret{{ end }}"
+                key: "{{ tpl .secret.external.key $ }}"
+          {{- end }}
+          {{- end }}
+          {{- with fromYaml (tpl (toYaml .Values.config.env) $) }}
           {{- range $name, $value := . }}
           - name: {{ $name }}
             value: {{ (tpl (toString $value) $ ) | quote }}
           {{- end }}
           {{- end }}
-          {{- with .Values.config.envFrom }}
-          envFrom: {{- tpl (toYaml .) $ | nindent 12 }}
-          {{- end }}
+          envFrom: 
+            {{- with .Values.config.envFrom }}
+              {{- tpl (toYaml .) $ | nindent 12 }}
+            {{- end }}
           {{- with .Values.deployment.resources }}
           resources: {{ toYaml . | nindent 12 }}
           {{- end }}
