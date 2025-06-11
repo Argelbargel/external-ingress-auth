@@ -19,6 +19,10 @@ It works perfect with NGINX ingress controller via [External Authentication](htt
 | commonLabels | object | `{}` | common labels for all resources deployed by this chart |
 | config.env | object | `{}` | environment-variables for configuration of the service; can be templated e.g to use helm-values    see https://github.com/Argelbargel/external-ldap-auth#environment-variables for allowed keys and values |
 | config.envFrom | list | `[]` | further configuration-sources (e.g. secrets for manager-dn and password); can be templated e.g to use helm-values |
+| config.ingressRules.enabled | bool | `false` |  |
+| config.ingressRules.secret.external.key | string | `"AUTHORIZATION_INGRESS_RULES_SECRET"` | key in the secret where the value for the ingress-secret is stored (can be templated) |
+| config.ingressRules.secret.external.name | string | `""` | if set to a non-empty value, the secret validating authorization-rules from the ingress    is injected from the given secret;  otherwise a Secret is created with the value above    (can be templated) |
+| config.ingressRules.secret.value | string | `"{{ randBytes 32 }}"` |  |
 | config.rules | list | `[]` | authorization rules (see https://github.com/Argelbargel/external-ldap-auth/tree/main/charts/auth-service#authorization-rules) |
 | deployment.annotations | object | `{}` | additional annotations specific to the deployment resource |
 | deployment.initContainers | list | `[]` | initContainers for the deployment; can be templated e.g to use helm-values |
