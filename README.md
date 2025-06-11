@@ -72,7 +72,7 @@ Except for authorization-rules, configuration is mainly done through environment
 
 ### Authorization Rules
 
-The ldap server is solely used to authenticate a user's credentials and to provide information about the user's group-membership. All further authorization-restrictions (or lack thereof) are configured authorization rules provided by the file specified in `AUTHORIZATION_RULES_PATH` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
+The ldap server is solely used to authenticate a user's credentials and to provide information about the user's group-memberships. All further authorization-restrictions (or lack thereof) are configured by rules declared in the config-file specified in `AUTHORIZATION_RULES_PATH` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
 
 #### Authorization Rule Format
 
