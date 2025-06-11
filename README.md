@@ -195,7 +195,7 @@ The requirement for the secret to be sent in the header `X-External-Auth-Secret`
 
 To indicate that the rules configured in the auth-services should be used by the ingress it is sufficient to sent an empty value in `X-Authorization-Rules`; setting the value to e.g. `# use default rules` is more concise and readable, though.
 
-Non-empty, valid ingress-specific authorization rules completely replace those declared in the config-file of the service for requests passed to the service by the ingress. If none of the rules provided by the ingress match, the [default authorization rule](#default-authorization-rule) is used to authorize a request. Nonetheless it is recommended to end your rules list with `<authenticated>` to make that fact explicit.
+Non-empty, valid ingress-specific authorization rules completely replace those declared in the config-file of the service for requests passed to the service by that ingress. If none of the rules provided by the ingress match, the [default authorization rule](#default-authorization-rule) is used to authorize a request. Nonetheless it is recommended to end your rules list with `<authenticated>` to make that fact explicit.
 
 #### Ingress configuration
 
