@@ -1,19 +1,20 @@
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/external-ldap-auth)](https://artifacthub.io/packages/search?repo=external-ldap-auth)
-[![release](https://img.shields.io/github/v/release/argelbargel/external-ldap-auth)](https://github.com/argelbargel/external-ldap-auth/releases)
-[![license](https://img.shields.io/badge/license-MIT-green)](https://github.com/argelbargel/external-ldap-auth/blob/master/LICENSE)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/external-ingress-auth)](https://artifacthub.io/packages/search?repo=external-ingress-auth)
+[![release](https://img.shields.io/github/v/release/argelbargel/external-ingress-auth)](https://github.com/argelbargel/external-ingress-auth/releases)
+[![license](https://img.shields.io/badge/license-MIT-green)](https://github.com/argelbargel/external-ingress-auth/blob/master/LICENSE)
 
-# External LDAP Authentication
+# External Ingress Authentication
 
-External LDAP Authentication provides an external authentication-service for Kubernetes Ingress Controllers which allows to authenticate and authorize users via LDAP-Servers.
+External Ingress Authentication provides an external authentication-service for Kubernetes Ingress Controllers which allows to authenticate users and authorize requests based on group-membership and request-parameters like remote-ip, request-method and/or requested path.
 
-**External LDAP Authentication** works perfect with **NGINX ingress controller** via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
+**External Ingress Authentication** works perfect with **NGINX ingress controller** via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
 ## Features
 
 - Authentication and Authorization for kubernetes ingresses.
 - Fine grained access control via flexible [authorization-rules](#authorization-rules)
 - Centralized rule-management and/or ingress-specific configuration of rules
-- Supports protocols `ldap://` and `ldaps://`.
+- Supports user authentication based on plain text htpasswd and group files 
+- Supports LDAP servers as authentication backends using protocols `ldap://` and `ldaps://`.
 - HTTP response headers with username and matched groups for the backend.
 - Brute force protection.
 - Log format in Plain-Text or JSON.
@@ -26,22 +27,35 @@ The easiest way to install the External LDAP Authentication service in your Kube
 
 Except for authorization-rules, configuration is mainly done through environment-variables.
 
-### LDAP Server
+### Authentication
+
+External Ingress Authentication can use a [htpasswd-file](https://httpd.apache.org/docs/2.4/programs/htpasswd.html) and/or a ldap-server for authentication.
+
+#### HtPasswd
+
+HtPasswd authentication is modeled analog to Apache httpd's [mod_authn_file](https://httpd.apache.org/docs/2.4/mod/mod_authn_file.html) and [mod_authz_groupfile](https://httpd.apache.org/docs/2.4/mod/mod_authz_groupfile.html#authgroupfile) using a htpasswd-file for users and passwords and a separate file mapping users to groups.
+
+| Variable           | Default-Value | Description                           |
+|--------------------|------------------------|------------------------------|
+| HTPASSWD_FILE_PATH | `./config/.htpasswd` | specifies the location of a htpasswd-file containing usernames and passwords. If empty, the htpasswd-backend will not be used. The service expect this file to be utf-8 encoded. |
+| HTPASSWD_GROUP_FILE_PATH     | optional     | specifies the location of a file mapping the users in the htpasswd-file to groups. It has the same format as the file used by Apache httpd's [mod_authz_groupfile](https://httpd.apache.org/docs/2.4/mod/mod_authz_groupfile.html#authgroupfile). If no path is specified, users authenticated by the htpasswd-backend are not mapped to groups. The service expect this file to be utf-8 encoded. |
+
+#### LDAP
 
 | Variable         | Required/Default-Value | Description                  |
 |------------------|------------------------|------------------------------|
-| LDAP_ENDPOINT    | required               | specifies the uri to the ldap-server (e.g. ldaps://example.com:636)            |
-| LDAP_BIND_DN     | required               | specifies the ldap-query used to authenticate an user. Must contain the placeholder `{username}` which is replaced by the username (e.g. `cn={username},cn=Users,dn=example,dn=com`) |
-| LDAP_SEARCH_BASE | required               | specifies the base-query used to search for users when determining their group membership (e.g. `cn=Users,dn=example,dn=com`) |
+| LDAP_ENDPOINT    | optional               | specifies the uri to the ldap-server. If not specified, the ldap-backend will not be used            |
+| LDAP_BIND_DN     | required, if ldap enabled               | specifies the ldap-query used to authenticate an user. Must contain the placeholder `{username}` which is replaced by the username (e.g. `cn={username},cn=Users,dn=example,dn=com`) |
+| LDAP_SEARCH_BASE | required, if ldap enabled | specifies the base-query used to search for users when determining their group membership (e.g. `cn=Users,dn=example,dn=com`) |
 | LDAP_SEARCH_FILTER | `(sAMAccountName={username})` | specifies the filter used to query users when determing their group membership. Must contain the placeholder `{username}` which is replaced with the given username when authenticating |
-| LDAP_MANAGER_DN | required | specifies the User-DN used to query the LDAP-server to determine group-membership (e.g. `cn=manager,dn=Users,dn=example,dn.com`) |
-| LDAP_MANAGER_PASSWORD | required | specified the Password for the Manager-User given in LDAP_MANAGER_DN |
+| LDAP_MANAGER_DN | required, if ldap enabled | specifies the User-DN used to query the LDAP-server to determine group-membership (e.g. `cn=manager,dn=Users,dn=example,dn.com`) |
+| LDAP_MANAGER_PASSWORD | required, if ldap enabled | specified the Password for the Manager-User given in LDAP_MANAGER_DN |
 
 ### Authorization
 
 | Variable         | Required/Default-Value | Description                          |
 |--------------------------|------------------------|------------------------------|
-| AUTHORIZATION_RULES_PATH | optional       | path to a file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules) |
+| AUTHORIZATION_RULES_PATH | optional       | path to a file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules). The service expect this file to be utf-8 encoded. |
 | AUTHORIZATION_INGRESS_RULES_ENABLED | `false`  | whether [authorization rules](#authorization-rules) can be provided by ingresses or not. **See [security considerations concerning authorization rules provided by ingresses](#security-considerations) before enabling this!** |
 | AUTHORIZATION_INGRESS_RULES_SECRET | required | secret key an ingress must provide when sending authorization-rules to the service. See [security considerations concerning authorization rules provided by ingresses](#security-considerations) for details. If no value is provided, the service generates a random secret on every (re-)start which can not be accessed. |
 
@@ -72,7 +86,7 @@ Except for authorization-rules, configuration is mainly done through environment
 
 ### Authorization Rules
 
-The ldap server is solely used to authenticate a user's credentials and to provide information about the user's group-memberships. All further authorization-restrictions (or lack thereof) are configured by rules declared in the config-file specified in `AUTHORIZATION_RULES_PATH` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
+Authentication backends are solely used to authenticate a user's credentials and to provide information about the user's group-memberships. All further authorization-restrictions (or lack thereof) are configured by rules declared in the config-file specified in `AUTHORIZATION_RULES_PATH` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
 
 #### Authorization Rule Format
 
@@ -95,7 +109,7 @@ Note that if any of the list-elements above contains the wildcards `**` or `<aut
 
 ##### Allow public, unauthenticated access
 
-The rule `**:**:**:/public/**:<public>` grants public access to anything below `/public/` on any host without authenticating against the ldap-server.
+The rule `**:**:**:/public/**:<public>` grants public access to anything below `/public/` on any host without authenticating against the authentication backends. Requests matching this rule are authorized even in the case that no authentication backends are configured
 
 ##### Restrict access to users in some groups
 
@@ -192,7 +206,7 @@ Depending on the [auth-service's configuration](#authorization) you can provide 
 
 #### Security considerations
 
-Ingress-specific rules are sent to the service using http headers. The service cannot discern between headers sent by the ingress-controller or by a client and passed through the ingress. Thus you have to ensure that **all** ingresses using external ldap authentication send the header `X-Authorization-Rules` when enabling ingress-specific authorization rules.
+Ingress-specific rules are sent to the service using http headers. The service cannot discern between headers sent by the ingress-controller or by a client and passed through the ingress. Thus you have to ensure that **all** ingresses using external ingress authentication's service send the header `X-Authorization-Rules` when enabling ingress-specific authorization rules.
 
 The requirement for the secret to be sent in the header `X-External-Auth-Secret` alongside the authorization rules for them to take effect is mainly meant as a reminder to ensure every ingress uses the annotation `nginx.ingress.kubernetes.io/auth-proxy-set-headers` and a ConfigMap containing the `X-Authorization-Header`. Everyone who has access to the secret's value (e.g. can access Secrets or whichever resource the secret's value is stored in in your cluster) will be able to send manipulated authorization rules *unless your ingresses do provide a value for `X-Authorization-Rules` in the ingresses configuration*.
 
@@ -246,7 +260,7 @@ Be aware that you have to reference the ConfigMap using `<namespace>/<name>` in 
 
 ### Caching authentication, authorization rules and responses from the authentication service
 
-The service itself can cache the *authentication* of credentials to prevent overloading the ldap-server with bind-requests and the selection of [authorization-rules](#authorization-rules); by default this cache has a TTL of 15 seconds. The cache stores whether the given credentials in the authorization-header are valid and the group-memberships of the authenticated user. Selection of the authorization rules is cached based on ingress-host, remote-ip, http-method and requested path. While the selected rule is cached, actual *authorization* is always re-evaluated for every request.
+The service itself can cache the *authentication* of credentials and the selection of [authorization-rules](#authorization-rules) to prevent overloading the service or its authentication backends; by default this cache has a TTL of 15 seconds. The cache stores whether the given credentials in the authorization-header are valid and the group-memberships of the authenticated user. Selection of the authorization rules is cached based on ingress-host, remote-ip, http-method and requested path. While the selected rule is cached, actual *authorization* is always re-evaluated for every request.
 
 #### Caching Authorization Responses in the Ingress
 

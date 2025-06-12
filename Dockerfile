@@ -23,7 +23,7 @@ COPY --chown=$UID:$GID ./src/ ./
 RUN chmod +x ./service.sh
 
 ENV DEV_MODE=false \
-    LDAP_ENDPOINT="http://localhost:389" \
+    HTPASSWD_FILE_PATH='$HOME/config/.htpasswd' \
     LDAP_BIND_DN="cn={username},<bind_n>" \
     LDAP_SEARCH_BASE="<search-base>" \
     LDAP_SEARCH_FILTER="(sAMAccountName={username})" \

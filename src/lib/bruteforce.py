@@ -1,6 +1,6 @@
 from cachetools import TTLCache
 
-from .logs import Logs
+from .logging import Logger
 
 class BruteForce:
     def __init__(self, enabled:bool, max_failures:int, expiration:int):
@@ -8,7 +8,7 @@ class BruteForce:
         self.max_failures = max_failures
         self.database = TTLCache(float('inf'), expiration)
 
-        self.logs = Logs(self.__class__.__name__)
+        self.logs = Logger(self.__class__.__name__)
         if (self.enabled):
             self.logs.info('brute-force-protection is enabled', failures=self.max_failures, expiration=expiration)
 

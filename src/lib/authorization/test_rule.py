@@ -1,10 +1,10 @@
 import unittest
-from os import environ
-environ['LOG_LEVEL'] = 'TRACE'
 
+from ..logging import configure_logging
 from .rule import Rule, AND, ANY, AUTHENTICATED, OR, PUBLIC
 
 unittest.util._MAX_LENGTH=2000
+configure_logging(log_level='TRACE')
 
 
 class TestRuleEquality(unittest.TestCase):

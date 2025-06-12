@@ -1,7 +1,7 @@
 import re
 from collections.abc import Iterable
 
-from ..logs import Logs
+from ..logging import Logger
 
 from .rule import DEFAULT_RULE, Rule
 from .rules import RuleSet
@@ -13,7 +13,7 @@ PART_ELEM_SEP_PATTERN = re.compile(r"\s*(?<!\\),\s*")
 SEP = " "
 SEP_PATTERN = re.compile(r"(?<!\\)\s")
 
-_log = Logs(__name__)
+_log = Logger(__name__)
 
 def parse_rules(data:str) -> RuleSet:
     rules = RuleSet()

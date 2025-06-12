@@ -1,12 +1,11 @@
-from os import environ
-environ['LOG_LEVEL'] = 'TRACE'
-
 import unittest
 
+from ..logging import configure_logging
 from .rule import DEFAULT_RULE, Rule
 from .rules import RuleSet
 
 unittest.util._MAX_LENGTH=2000
+configure_logging(log_level='TRACE')
 
 
 RULE1 = Rule(methods=['POST'])

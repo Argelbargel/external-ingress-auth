@@ -10,28 +10,58 @@ from cachetools import TTLCache, cached
 from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import Counter
 
-from lib.authentication import LDAPAuthentication
+from lib.authentication import HtPasswd, LDAP
 from lib.authorization import Rule, RulesFile, parse_rules
 from lib.bruteforce import BruteForce
-from lib.logs import Logs
+from lib.logging import Logger, configure_logging
+
+
+# --- Logging -----------------------------------------------------------------
+configure_logging(getenv('LOG_LEVEL', 'INFO'), getenv('LOG_FORMAT', 'JSON'))
+log = Logger('main')
 
 
 # --- Parameters --------------------------------------------------------------
-PAGE_FOOTER = getenv('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ldap-auth" target="_blank">Powered by External LDAP Authentication</a></small>')
+PAGE_FOOTER = getenv('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ingress-auth" target="_blank">Powered by External Ingress Authentication</a></small>')
+
 
 # --- Authentication & Authorization ------------------------------------------
+authBackends = []
+htpasswdFile = getenv('HTPASSWD_FILE_PATH', '.config/.htpasswd')
+if htpasswdFile:
+    authBackends.append(
+        HtPasswd(
+            getenv('HTPASSWD_FILE_PATH', '.config/.htpasswd'),
+            getenv('HTPASSWD_GROUPS_FILE_PATH')
+        )
+    )
+
+ldapEndpoint = getenv('LDAP_ENDPOINT', '')
+if ldapEndpoint:
+    authBackends.append(
+        LDAP(
+            ldapEndpoint, getenv('LDAP_BIND_DN'),
+            getenv('LDAP_SEARCH_BASE'), getenv('LDAP_SEARCH_FILTER'),
+            getenv('LDAP_MANAGER_DN'), getenv('LDAP_MANAGER_PASSWORD')
+        )
+    )
+
+if not authBackends:
+    log.warning("No authentication-backends configured - the service will reject any non-public requests!")
+
 default_rules = RulesFile(getenv("AUTHORIZATION_RULES_PATH", "./config/rules.conf"))
 authCache = TTLCache(float('inf'), float(getenv("AUTH_CACHE_TTL_SECONDS", "15")))
 
-# --- LDAP-Connection ---------------------------------------------------------
-ldap = LDAPAuthentication(
-        getenv('LDAP_ENDPOINT', ''), getenv('LDAP_BIND_DN'), 
-        getenv('LDAP_SEARCH_BASE'), getenv('LDAP_SEARCH_FILTER'), 
-        getenv('LDAP_MANAGER_DN'), getenv('LDAP_MANAGER_PASSWORD')
-    )
+INGRESS_RULES_ENABLED = getenv('AUTHORIZATION_INGRESS_RULES_ENABLED', 'false').lower() == 'true'
+INGRESS_RULES_SECRET  = getenv('AUTHORIZATION_INGRESS_RULES_SECRET', '') or ''.join(choices(ascii_letters + digits, k=32))
+if INGRESS_RULES_ENABLED:
+    log.warning("authorization-rules from ingresses are enabled")
+
+
+# --- Brute-Force-Protection --------------------------------------------------
 bruteForce = BruteForce(
-                getenv('BRUTE_FORCE_PROTECTION_ENABLED', "false").lower() == "true", 
-                int(getenv('BRUTE_FORCE_MAX_FAILURE_COUNT', "5")), 
+                getenv('BRUTE_FORCE_PROTECTION_ENABLED', "false").lower() == "true",
+                int(getenv('BRUTE_FORCE_MAX_FAILURE_COUNT', "5")),
                 int(getenv('BRUTE_FORCE_EXPIRATION_SECONDS', "60"))
             )
 
@@ -42,15 +72,6 @@ app.config.from_object(__name__)
 # --- Metrics -------------------------------------------------------------------
 metrics = PrometheusMetrics(app, group_by='endpoint', excluded_paths='^/(?!$)', default_latency_as_histogram=False)
 blocked_ips = Counter('blocked_ips', 'IPs blocked by brute-force-protection', ['ip'])
-
-# --- Logging -----------------------------------------------------------------
-logs = Logs('main')
-
-# --- Authorizatin-Rules from Ingresses
-INGRESS_RULES_ENABLED = getenv('AUTHORIZATION_INGRESS_RULES_ENABLED', 'false').lower() == 'true'
-INGRESS_RULES_SECRET  = getenv('AUTHORIZATION_INGRESS_RULES_SECRET', '') or ''.join(choices(ascii_letters + digits, k=32))
-if INGRESS_RULES_ENABLED:
-    logs.warning("authorization-rules from ingresses are enabled")
 
 
 def _request_host():
@@ -72,45 +93,47 @@ def auth():
     if not rule.is_public():
 
         if not request.authorization:
-            logs.debug('Missing authorization-header')
+            log.debug('Missing authorization-header')
             return abort(401)
 
         username = request.authorization.username
         password = request.authorization.password
 
         if bruteForce.is_blocked(ip):
-            logs.info('Rejecting request from blocked ip', ip=ip, username=username)
+            log.info('Rejecting request from blocked ip', ip=ip, username=username)
             return abort(429)
 
         authenticated, usergroups = _authenticate_(username, password)
         if not authenticated:
-            logs.info('Authentication failed', ip=ip, username=username)
+            log.info('Authentication failed', ip=ip, username=username)
 
             if bruteForce.add_failure(ip):
-                logs.warning('Blocking requests after to many authentication failures', ip=ip, username=username)
+                log.warning('Blocking requests after to many authentication failures', ip=ip, username=username)
                 blocked_ips.labels(ip=ip).inc()
                 return abort(429)
 
             return abort(401)
 
-        logs.debug('Authentication successful', ip=ip, username=username, groups=usergroups)
+        log.debug('Authentication successful', ip=ip, username=username, groups=usergroups)
 
         authorized, matched_groups = rule.authorize(username, usergroups)
         if not authorized:
-            logs.info('Authorization failed', ip=ip, username=username, host= _request_host(), rule=rule)
+            log.info('Authorization failed', ip=ip, username=username, host= _request_host(), rule=rule)
             return abort(403)
 
         headers=[('x-user', username),('x-groups', ",".join(matched_groups))]
-        logs.debug('Authorization successful', ip=ip, username=username, host=_request_host(), groups=matched_groups, rule=rule)
+        log.debug('Authorization successful', ip=ip, username=username, host=_request_host(), groups=matched_groups, rule=rule)
 
     return _render_response(200, "Authorized", "You are authorized to access the requested resource", headers=headers)
 
 
 @app.route('/health', methods=['GET'])
 def health():
-    if not ldap.health():
-        return abort(503)
-    return _render_response(200, "Healthy", "External LDAP Authentication is healthy")
+    for b in authBackends:
+        if not b.health():
+            return abort(503)
+
+    return _render_response(200, "Healthy", "External Ingress Authentication is healthy")
 
 
 @app.after_request
@@ -124,14 +147,18 @@ def global_headers(response):
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     if e.code not in [401, 403, 404, 405, 429]:
-        logs.error('An error occurred while processing a request', ip=_request_ip(), path=request.path, code=e.code, name=e.name, description=e.description)
+        log.error('An error occurred while processing a request', ip=_request_ip(), path=request.path, code=e.code, name=e.name, description=e.description)
 
     return _render_response(e.code, e.name, e.description, "An Error Occurred While Processing Your Request")
 
 
 @cached(authCache)
 def _authenticate_(username, password):
-    return ldap.authenticate(username, password)
+    for b in authBackends:
+        authenticated, groups = b.authenticate(username, password)
+        if authenticated:
+            return True, groups
+    return False, []
 
 
 @cached(authCache)
@@ -140,16 +167,16 @@ def _find_rule(host:str, ip:str, method:str, path:str) -> Rule:
 
     if INGRESS_RULES_ENABLED and 'X-Authorization-Rules' in request.headers:
         if 'X-External-Auth-Secret' not in request.headers or request.headers.get('X-External-Auth-Secret') != INGRESS_RULES_SECRET:
-            logs.warning("ignoring authorization rules from ingress as secret is missing or invalid", host=host)
+            log.warning("ignoring authorization rules from ingress as secret is missing or invalid", host=host)
         else:
             ingress_rules = parse_rules(request.headers.get('X-Authorization-Rules'))
             if ingress_rules:
-                logs.info("using authorization-rules provided by ingress...", host=host)
-                logs.debug("authorization-rules provided by ingress", host=host, rules=ingress_rules)
+                log.info("using authorization-rules provided by ingress...", host=host)
+                log.debug("authorization-rules provided by ingress", host=host, rules=ingress_rules)
                 rules = ingress_rules
 
     rule = rules.find_rule(host, ip, method, path)
-    logs.info(f"Authenticating request using rule {rule}...", host=host, ip=ip, method=method, path=path)
+    log.info(f"Authenticating request using rule {rule}...", host=host, ip=ip, method=method, path=path)
     return rule
 
 
@@ -189,7 +216,7 @@ def _render_response(status_code, title, message, error = None, headers = None):
     }
 
     if status_code == 401:
-        headers.append( ('WWW-Authenticate', 'Basic realm=External LDAP Authentication'))
+        headers.append(('WWW-Authenticate', 'Basic realm=External Authentication'))
 
     return render_template('page.html', layout=layout), status_code, headers
 

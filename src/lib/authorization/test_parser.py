@@ -1,13 +1,12 @@
-from os import environ
-environ['LOG_LEVEL'] = 'TRACE'
-
 import unittest
 
+from ..logging import configure_logging
 from .parser import parse_rule, parse_rules
 from .rule import Rule, ANY, AND, OR
 from .rules import RuleSet
 
 unittest.util._MAX_LENGTH=2000
+configure_logging(log_level='TRACE')
 
 
 class TestRulesParser(unittest.TestCase):
