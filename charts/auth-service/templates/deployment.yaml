@@ -2,59 +2,152 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "external-ldap-auth.name" . }}
+  name: {{ template "external-ingress-auth.name" . }}
   namespace: "{{ .Release.Namespace }}"
-  labels: {{- include "external-ldap-auth.labels" (list . .Values.deployment.labels) | nindent 4 }}
-  annotations: {{- include "external-ldap-auth.annotations" (list . .Values.deployment.annotations) | nindent 4 }}  
+  labels: {{- include "external-ingress-auth.labels" (list . .Values.deployment.labels) | nindent 4 }}
+  annotations: {{- include "external-ingress-auth.annotations" (list . .Values.deployment.annotations) | nindent 4 }}  
 spec:
   replicas: {{.Values.deployment.replicas}}
   selector:
-    matchLabels: {{ include "external-ldap-auth.labels.selectors" . | nindent 6 }}
+    matchLabels: {{ include "external-ingress-auth.labels.selectors" . | nindent 6 }}
   template:
     metadata:
-      labels: {{ include "external-ldap-auth.labels.selectors" . | nindent 8 }}
+      labels: {{ include "external-ingress-auth.labels.selectors" . | nindent 8 }}
     spec:
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets: {{- tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
-      automountServiceAccountToken: false
-      {{- with .Values.deployment.initContainers }}
-      initContainers: {{- tpl (toYaml .) $ | nindent 8 }}
-      {{- end }}
       containers:
-        - name: external-ldap-auth
-          image: "{{.Values.image.repo}}:{{ default .Chart.AppVersion .Values.image.tag }}"
+        - name: auth-service
+          image: "{{tpl .Values.image.repo .}}:{{ tpl .Values.image.tag . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: 9000
           env:
+          {{- with .Values.config.authentication }}
+          - name: HTPASSWD_FILE_PATH
+            value: "{{ if .htpasswd.enabled }}/external-ingress-auth/config/htpasswd/users/.htpasswd{{ end }}"
+          {{- if .htpasswd.groups.enabled }}
+          - name: HTPASSWD_GROUP_FILE_PATH
+            value: "/external-ingress-auth/config/htpasswd/groups/groups"
+          {{- end }}
+          {{- with .ldap }}
+          {{- if .enabled }}
+          {{- $ldapExternalSecretName := required "When enabling ldap authentication the name of the secret containing LDAP_MANAGER_DN must be specified!" (tpl .externalSecret.name $) }}
+          - name: LDAP_SERVER_URL
+            {{- $ldapServerUrl := tpl .serverUrl $ }}
+            {{- if $ldapServerUrl }}
+            value: {{ $ldapServerUrl | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef: {{ $ldapExternalSecretName | quote }}
+              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.serverUrl, a key within a secret containing the ldap-server-url must be specified!" (tpl .externalSecret.serverUrlKey $) | quote }}
+            {{- end }}
+          - name: LDAP_BIND_DN
+            {{- $ldapBindDn := tpl .bindDn $ }}
+            {{- if $ldapBindDn }}
+            value: {{ $ldapBindDn | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef: {{ $ldapExternalSecretName | quote }}
+              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.bindDn, a key within a secret containing the ldap-bind-dn must be specified!" (tpl .externalSecret.bindDnKey $) | quote }}
+            {{- end }}
+          - name: LDAP_SEARCH_BASE
+            {{- $ldapSearchBase := tpl .searchBase $ }}
+            {{- if $ldapSearchBase }}
+            value: {{ $ldapSearchBase | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef: {{ $ldapExternalSecretName | quote }}
+              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.searchBase, a key within a secret containing the ldap-search-base must be specified!" (tpl .externalSecret.searchBaseKey $) | quote }}
+            {{- end }}
+          - name: LDAP_SEARCH_FILTER
+            {{- $ldapSearchFilter := tpl .searchFilter $ }}
+            {{- if $ldapSearchFilter }}
+            value: {{ $ldapSearchFilter | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef: {{ $ldapExternalSecretName | quote }}
+              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.searchFilter, a key within a secret containing the ldap-search-filter must be specified!" (tpl .externalSecret.searchFilterKey $) | quote }}
+            {{- end }}
+          - name: LDAP_MANAGER_DN
+            valueFrom:
+              secretKeyRef:
+                name: {{ $ldapExternalSecretName | quote }}
+                key: {{ required "When enabling ldap authentication a key within a secret containing the ldap-manager-dn must be specified!" (tpl .externalSecret.managerDnKey $) | quote }}
+          - name: LDAP_MANAGER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ $ldapExternalSecretName | quote }}
+                key: {{ required "When enabling ldap authentication a key within a secret containing the ldap-manager-password must be specified!" (tpl .externalSecret.managerPasswordKey $) | quote }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
           - name: AUTHORIZATION_RULES_PATH
-            value: /external-ldap-auth/config/rules.conf
-          {{- with .Values.config.ingressRules }}
+            value: /external-ingress-auth/config/rules/rules.conf
+          {{- with .Values.config.authorization.ingressRules }}
           {{- if .enabled }}
           - name: AUTHORIZATION_INGRESS_RULES_ENABLED
             value: "true"
           - name: AUTHORIZATION_INGRESS_RULES_SECRET
             valueFrom:
               secretKeyRef:
-                name: "{{ if .secret.external.name }}{{ tpl .secret.external.name $ }}{{ else }}{{ template "external-ldap-auth.name" $ }}-rules-secret{{ end }}"
+                name: "{{ if .secret.external.name }}{{ tpl .secret.external.name $ }}{{ else }}{{ template "external-ingress-auth.name" $ }}-rules-secret{{ end }}"
                 key: "{{ tpl .secret.external.key $ }}"
           {{- end }}
           {{- end }}
-          {{- with fromYaml (tpl (toYaml .Values.config.env) $) }}
-          {{- range $name, $value := . }}
-          - name: {{ $name }}
-            value: {{ (tpl (toString $value) $ ) | quote }}
+          {{- with .Values.config.bruteForceProtection }}
+          {{- if .enabled }}
+          - name: BRUTE_FORCE_PROTECTION_ENABLED
+            value: "true"
+          - name: BRUTE_FORCE_PROTECTION_MAX_FAILURE_COUNT
+            value: {{ .maxFailureCount | quote }}
+          - name: BRUTE_FORCE_PROTECTION_EXPIRATION_SECONDS
+            value: {{ .expirationSecs | quote }}
           {{- end }}
           {{- end }}
-          envFrom: 
-            {{- with .Values.config.envFrom }}
-              {{- tpl (toYaml .) $ | nindent 12 }}
+          {{- with .Values.config.tls }}
+          {{- if .enabled }}
+          - name: TLS_CERT
+            value: "/external-ingress-auth/config/tls/cert"
+          - name: TLS_KEY
+            value: "/external-ingress-auth/config/tls/key"
+          {{- end }}
+          {{- end }}
+          - name: AUTH_CACHE_TTL_SECONDS
+            value: {{ .Values.config.authCacheTTLSecs | quote }}
+          {{- with .Values.config.logging }}
+          - name: LOG_LEVEL
+            value: {{ .level | quote }}
+          - name: LOG_FORMAT
+            value: {{ .format | quote }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.config.authentication.htpasswd.enabled }}
+            - name: htpasswd-users
+              mountPath: /external-ingress-auth/config/htpasswd/users
+            {{- if .Values.config.authentication.htpasswd.groups.enabled }}
+            - name: htpasswd-groups
+              mountPath: /external-ingress-auth/config/htpasswd/groups
+            {{- end }}
+            {{- end }}
+            {{- with .Values.config.authorization.rules }}
+            - name: rules
+              mountPath: /external-ingress-auth/config/rules
+            {{- end }}
+            {{- if .Values.config.tls.enabled }}
+            - name: tls
+              mountPath: /external-ingress-auth/config/tls
+            {{- end }}
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.deployment.volumeMounts }}
+            {{- tpl (toYaml .) $ | nindent 12 }}            
             {{- end }}
           {{- with .Values.deployment.resources }}
           resources: {{ toYaml . | nindent 12 }}
           {{- end }}
+          ports:
+            - name: http
+              containerPort: 9000
           securityContext:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
@@ -87,27 +180,51 @@ spec:
               path: /health
             initialDelaySeconds: 10
             timeoutSeconds: 1
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-            {{- with .Values.config.rules }}
-            - name: config
-              mountPath: /external-ldap-auth/config/
-            {{- end }}
-            {{- with .Values.deployment.volumeMounts }}
-            {{- tpl (toYaml .) $ | nindent 12 }}            
-            {{- end }}
+      {{- with .Values.deployment.initContainers }}
+      initContainers: {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       volumes:
-        - name: tmp
-          emptyDir: {}
-        {{- with .Values.config.rules }}
-        - name: config
+        {{- with .Values.config.authentication.htpasswd }}
+        {{- if .enabled }}
+        - name: htpasswd-users
+          secret:
+            secretName: {{ required "When enabling htpasswd authentication backend the name of the secret containing the users must be specified!" (tpl .users.externalSecret.name $) | quote }}
+            items:
+            - key: {{ required "When enabling htpasswd authentication backend the key within a secret containing the users must be specified!" (tpl .users.externalSecret.key $) | quote }}
+              path: .htpasswd
+        {{- if .groups.enabled }}
+        - name: htpasswd-groups
+          secret:
+            secretName: {{ required "When enabling groups for htpasswd authentication the name of the secret containing the groups must be specified!" (tpl .groups.externalSecret.name $) | quote }}
+            items:
+            - key: {{ required "When enabling groups for htpasswd authentication the key within a secret containing the groups must be specified!" (tpl .groups.externalSecret.key $) | quote }}
+              path: groups
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.config.authorization.rules }}
+        - name: rules
           configMap:
-            name: {{ template "external-ldap-auth.name" $ }}-rules
+            name: {{ template "external-ingress-auth.name" $ }}-rules
             items:
             - key: rules
               path: rules.conf           
         {{- end }}
+        {{- with .Values.config.tls }}
+        {{- if .enabled }}
+        - name: tls
+          secret:
+            secretName: {{ required "When enabling tls the name of the secret containing the certificate and key must be specified!" (tpl .externalSecret.name $) | quote }}
+            items:
+            - key: {{ required "When enabling tls the name of the key within a secret containing the certificate must be specified!" (tpl .externalSecret.certKey $) | quote }}
+              path: cert
+            - key: {{ required "When enabling tls the name of the key within a secret containing the certificate's key must be specified!" (tpl .externalSecret.keyKey $) | quote }}
+              path: key
+        {{- end }}
+        {{- end }}
+        - name: tmp
+          emptyDir: {}
         {{- with .Values.deployment.volumes }}
         {{- tpl (toYaml .) $ | nindent 8 }}            
         {{- end }}
+      automountServiceAccountToken: false

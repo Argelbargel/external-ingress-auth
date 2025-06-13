@@ -1,8 +1,8 @@
 apiVersion: v2
 type: application
-name: external-ldap-auth-service
+name: external-ingress-auth-service
 description: |
-  Installs an instance of the External LDAP Authentication Service that provides LDAP authentication for Kubernetes Ingress Controllers.
+  Installs an instance of the External LDAP Authentication Service that provides external authentication for Kubernetes Ingress Controllers.
   It works perfect with NGINX ingress controller via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
 version: 0.3.2
@@ -12,15 +12,15 @@ keywords:
 - authorization
 - ldap
 - ingress
-home: https://argelbargel.github.io/external-ldap-auth/
+home: https://argelbargel.github.io/external-ingress-auth/
 sources:
-- https://github.com/Argelbargel/external-ldap-auth/
+- https://github.com/Argelbargel/external-ingress-auth/
 maintainers:
 - name: Argelbargel
   url: https://github.com/Argelbargel
 annotations:
   artifacthub.io/images: |
-    - name: external-ldap-auth
-      image: ghcr.io/argelbargel/external-ldap-auth:0.2.1
+    - name: external-ingress-auth
+      image: ghcr.io/argelbargel/external-ingress-auth:0.3.2
   artifacthub.io/recommendations: |
     - url: https://kubernetes.github.io/ingress-nginx

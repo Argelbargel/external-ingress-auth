@@ -1,21 +1,21 @@
-{{- define "external-ldap-auth.name" -}}
-    {{- template "external-ldap-auth.trim" (list (.Release.Name | lower) 27) }}-{{- template "external-ldap-auth.trim" (list (.Chart.Name | lower) 36) }}
+{{- define "external-ingress-auth.name" -}}
+    {{- template "external-ingress-auth.trim" (list (.Release.Name | lower) 27) }}-{{- template "external-ingress-auth.trim" (list (.Chart.Name | lower) 36) }}
 {{- end }}
 
-{{- define "external-ldap-auth.trim" }}
+{{- define "external-ingress-auth.trim" }}
 {{- $value := kindIs "slice" . | ternary (index . 0) . }}
 {{- $len := kindIs "slice" . | ternary (index . 1) 32 }}
 {{- $value | trunc $len | trimSuffix "-" }}
 {{- end }}
 
-{{- define "external-ldap-auth.labels.selectors" -}}
+{{- define "external-ingress-auth.labels.selectors" -}}
 app.kubernetes.io/name: {{ .Chart.Name | trunc 63 | trimSuffix "-" | quote }}
 app.kubernetes.io/part-of: {{ .Release.Name }}
 {{- end }}
 
 
-{{- define "external-ldap-auth.labels" -}}
-{{ include "external-ldap-auth.labels.selectors" (index . 0) }}
+{{- define "external-ingress-auth.labels" -}}
+{{ include "external-ingress-auth.labels.selectors" (index . 0) }}
 app.kubernetes.io/version:	{{ (index . 0).Chart.Version | quote }}
 app.kubernetes.io/managed-by: {{ (index . 0).Release.Service | quote }}
 {{- range $name, $value := merge (index . 1) (index . 0).Values.commonLabels }}
@@ -23,23 +23,23 @@ app.kubernetes.io/managed-by: {{ (index . 0).Release.Service | quote }}
 {{- end }}
 {{- end }}
 
-{{- define "external-ldap-auth.annotations" -}}
+{{- define "external-ingress-auth.annotations" -}}
 {{- range $name, $value := merge (index . 1) (index . 0).Values.commonAnnotations }}
 {{ $name }}: {{ $value | quote }}
 {{- end }}
 {{- end }}
 
-{{- define "external-ldap-auth.rule" }}
-{{- include "external-ldap-auth.rule-part" .hosts -}}:
-{{- include "external-ldap-auth.rule-part" .ranges -}}:
-{{- include "external-ldap-auth.rule-part" .methods -}}:
-{{- include "external-ldap-auth.rule-part" .paths -}}:
+{{- define "external-ingress-auth.rule" }}
+{{- include "external-ingress-auth.rule-part" .hosts -}}:
+{{- include "external-ingress-auth.rule-part" .ranges -}}:
+{{- include "external-ingress-auth.rule-part" .methods -}}:
+{{- include "external-ingress-auth.rule-part" .paths -}}:
 {{- if .public -}}
 <public>
 {{- else -}}
-{{- include "external-ldap-auth.rule-part" .users -}}
+{{- include "external-ingress-auth.rule-part" .users -}}
 {{- if .groups -}}
-:{{- include "external-ldap-auth.rule-part" .groups -}}
+:{{- include "external-ingress-auth.rule-part" .groups -}}
 {{- with .operators -}}
 :{{ default "OR" .groups }}:{{ default "AND" (get . "users-and-groups") -}}
 {{- end -}}
@@ -48,6 +48,6 @@ app.kubernetes.io/managed-by: {{ (index . 0).Release.Service | quote }}
 {{- end }}
 
 
-{{- define "external-ldap-auth.rule-part" -}}
+{{- define "external-ingress-auth.rule-part" -}}
 {{- if . }}{{ join "," . }}{{ else }}**{{ end }}
 {{- end -}}
