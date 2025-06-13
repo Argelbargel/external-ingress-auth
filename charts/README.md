@@ -12,7 +12,7 @@ Installs the External LDAP Auth service. To install the chart:
 
 ```shell
 helm repo add external-ingress-auth https://argelbargel.github.io/external-ingress-auth/
-helm install external-ingress-auth/auth-service
+helm install external-ingress-auth/auth-service -f <path to your values.yaml>
 ```
 
 See [chart-details](./auth-service/) for configuration details.
