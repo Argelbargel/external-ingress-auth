@@ -45,7 +45,7 @@ Most configuration parameters are passed to the service-container via [environme
 
 ##### Authentication
 
-External Ingress Authentication can use a [htpasswd-file](https://httpd.apache.org/docs/2.4/programs/htpasswd.html) and/or a ldap-server for authentication.
+External Ingress Authentication can use a [htpasswd-file](https://httpd.apache.org/docs/2.4/programs/htpasswd.html) and/or a [ldap-server](#ldap) for authentication.
 
 ###### HtPasswd
 
