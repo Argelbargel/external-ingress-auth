@@ -39,7 +39,7 @@ The easiest way to install and configure the External Ingress Authentication ser
 
 ### Configuration
 
-Most configuration parameters are passed to the service-container via [environment variables](#environment-variables). Common [authorization rules](#authorization-rules) and the user- and group-definitions for [htpasswd authentication](#htpasswd) must be mounted at the paths specified in the respective environment variables.
+Most configuration parameters are passed to the service-container via [environment variables](#environment-variables). Global [authorization rules](#authorization-rules) and the user- and group-definitions for [htpasswd authentication](#htpasswd) must be mounted at the paths specified in the respective environment variables.
 
 #### Environment Variables
 
