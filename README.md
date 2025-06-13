@@ -19,19 +19,35 @@ External Ingress Authentication provides an external authentication-service for 
 - Brute force protection.
 - Log format in Plain-Text or JSON.
 
-## Installation
+## Documentation
 
-The easiest way to install the External LDAP Authentication service in your Kubernetes cluster is to use the provided [Helm chart](./charts/auth-service/).
+- [Installation](#installation)
+- [Configuration](#configuration)
+  - [Environment Variables](#environment-variables)
+  - [Authorization Rules](#authorization-rules)
+- [Usage](#usage)
+  - [Ingress Configuration](#default-ingress-configuration)
+  - [Caching Authorization in Ingress](#caching-authorization-responses-in-the-ingress)
+  - [Ingress-specific Authorization Rules](#using-ingress-specific-authorization-rules)
+  - [Response-Headers](#response-headers)
+  - [Caching within the Service](#caching-within-the-service)
+  - [Metrics](#metrics)
 
-## Configuration
+### Installation
 
-Except for authorization-rules, configuration is mainly done through environment-variables.
+The easiest way to install and configure the External Ingress Authentication service in your Kubernetes cluster is to use the provided [Helm chart](./charts/auth-service/).
 
-### Authentication
+### Configuration
+
+Most configuration parameters are passed to the service-container via [environment variables](#environment-variables). Common [authorization rules](#authorization-rules) and the user- and group-definitions for [htpasswd authentication](#htpasswd) must be mounted at the paths specified in the respective environment variables.
+
+#### Environment Variables
+
+##### Authentication
 
 External Ingress Authentication can use a [htpasswd-file](https://httpd.apache.org/docs/2.4/programs/htpasswd.html) and/or a ldap-server for authentication.
 
-#### HtPasswd
+###### HtPasswd
 
 HtPasswd authentication is modeled analog to Apache httpd's [mod_authn_file](https://httpd.apache.org/docs/2.4/mod/mod_authn_file.html) and [mod_authz_groupfile](https://httpd.apache.org/docs/2.4/mod/mod_authz_groupfile.html#authgroupfile) using a htpasswd-file for users and passwords and a separate file mapping users to groups.
 
@@ -40,26 +56,26 @@ HtPasswd authentication is modeled analog to Apache httpd's [mod_authn_file](htt
 | HTPASSWD_FILE_PATH | `./config/.htpasswd` | specifies the location of a htpasswd-file containing usernames and passwords. If empty, the htpasswd-backend will not be used. The service expect this file to be utf-8 encoded. |
 | HTPASSWD_GROUP_FILE_PATH     | optional     | specifies the location of a file mapping the users in the htpasswd-file to groups. It has the same format as the file used by Apache httpd's [mod_authz_groupfile](https://httpd.apache.org/docs/2.4/mod/mod_authz_groupfile.html#authgroupfile). If no path is specified, users authenticated by the htpasswd-backend are not mapped to groups. The service expect this file to be utf-8 encoded. |
 
-#### LDAP
+###### LDAP
 
 | Variable         | Required/Default-Value | Description                  |
 |------------------|------------------------|------------------------------|
-| LDAP_ENDPOINT    | optional               | specifies the uri to the ldap-server. If not specified, the ldap-backend will not be used            |
+| LDAP_SERVER_URL  | optional               | specifies the uri to the ldap-server. If not specified, the ldap-backend will not be used            |
 | LDAP_BIND_DN     | required, if ldap enabled               | specifies the ldap-query used to authenticate an user. Must contain the placeholder `{username}` which is replaced by the username (e.g. `cn={username},cn=Users,dn=example,dn=com`) |
 | LDAP_SEARCH_BASE | required, if ldap enabled | specifies the base-query used to search for users when determining their group membership (e.g. `cn=Users,dn=example,dn=com`) |
 | LDAP_SEARCH_FILTER | `(sAMAccountName={username})` | specifies the filter used to query users when determing their group membership. Must contain the placeholder `{username}` which is replaced with the given username when authenticating |
 | LDAP_MANAGER_DN | required, if ldap enabled | specifies the User-DN used to query the LDAP-server to determine group-membership (e.g. `cn=manager,dn=Users,dn=example,dn.com`) |
 | LDAP_MANAGER_PASSWORD | required, if ldap enabled | specified the Password for the Manager-User given in LDAP_MANAGER_DN |
 
-### Authorization
+##### Authorization
 
 | Variable         | Required/Default-Value | Description                          |
 |--------------------------|------------------------|------------------------------|
-| AUTHORIZATION_RULES_PATH | optional       | path to a file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#ingress-configuration-of-authorization-rules). The service expect this file to be utf-8 encoded. |
+| AUTHORIZATION_RULES_PATH | optional       | path to a file containing [authorization rules](#authorization-rules); if none is supplied the [default authorization-rule](#default-authorization-rule) is used unless additional rules are supplied by [ingress-configuration](#using-ingress-specific-authorization-rules). The service expect this file to be utf-8 encoded. |
 | AUTHORIZATION_INGRESS_RULES_ENABLED | `false`  | whether [authorization rules](#authorization-rules) can be provided by ingresses or not. **See [security considerations concerning authorization rules provided by ingresses](#security-considerations) before enabling this!** |
 | AUTHORIZATION_INGRESS_RULES_SECRET | required | secret key an ingress must provide when sending authorization-rules to the service. See [security considerations concerning authorization rules provided by ingresses](#security-considerations) for details. If no value is provided, the service generates a random secret on every (re-)start which can not be accessed. |
 
-### Brute-Force-Protection
+##### Brute-Force-Protection
 
 | Variable         | Required/Default-Value | Description                  |
 |------------------|------------------------|------------------------------|
@@ -67,14 +83,14 @@ HtPasswd authentication is modeled analog to Apache httpd's [mod_authn_file](htt
 | BRUTE_FORCE_PROTECTION_MAX_FAILURE_COUNT | `5` | specifies after how many failed login attempts the IP is blocked by the protection |
 | BRUTE_FORCE_PROTECTION_EXPIRATION_SECONDS | `60` | specifies the time window within which failed login attempts are counted and for how long an IP gets blocked |
 
-### HTTPS/TLS
+##### HTTPS/TLS
 
 | Variable         | Required/Default-Value | Description                  |
 |------------------|------------------------|------------------------------|
 | TLS_CERT | optional | specifies the path to the certificate used for TLS/HTTPS. If no certificate is specified, the service communicates via unsecured HTTP |
 | TLS_KEY | optional | specifies the key for the certificate specified in TLS_CERT  |
 
-### Miscellaneous
+##### Miscellaneous
 
 | Variable               | Required/Default-Value | Description                  |
 |------------------------|------------------------|------------------------------|
@@ -82,13 +98,12 @@ HtPasswd authentication is modeled analog to Apache httpd's [mod_authn_file](htt
 | GUNICORN_CMD_ARGS | optional | allows you to specify custom arguments for the [gunicorn-server](https://gunicorn.org/) used by the service |
 | LOG_LEVEL | `INFO` | specifies the log-level. Valid values are `ERROR`, `WARN`, `INFO`, `DEBUG` and `TRACE`. |
 | LOG_FORMAT | `JSON` | specifies the log-format |
-| PAGE_FOOTER | optional | specifies the HTML in the footer of the error-pages rendered by the service. To disable the footer, set `PAGE_FOOTER=""` |
 
-### Authorization Rules
+#### Authorization Rules
 
-Authentication backends are solely used to authenticate a user's credentials and to provide information about the user's group-memberships. All further authorization-restrictions (or lack thereof) are configured by rules declared in the config-file specified in `AUTHORIZATION_RULES_PATH` or in the [ingress-configuration](#ingress-configuration-of-authorization-rules).
+Authentication backends are solely used to authenticate a user's credentials and to provide information about the user's group-memberships. All further authorization-restrictions (or lack thereof) are configured by rules declared in the config-file specified in `AUTHORIZATION_RULES_PATH` or in the [ingress-configuration](#using-ingress-specific-authorization-rules).
 
-#### Authorization Rule Format
+##### Authorization Rule Format
 
 Authorization rules are declared in the format `<hosts>:<ip-ranges>:<methods>:<paths>:<users>:<groups>:<groups-operator>:<users-groups-operator>`. The parts have the following meaning:
 
@@ -105,41 +120,41 @@ Authorization rules are declared in the format `<hosts>:<ip-ranges>:<methods>:<p
 
 Note that if any of the list-elements above contains the wildcards `**` or `<authenticated>` any other element in the list is ignored (so `**,value` is equivalent to `**`).
 
-#### Examples
+##### Examples
 
-##### Allow public, unauthenticated access
+###### Allow public, unauthenticated access
 
 The rule `**:**:**:/public/**:<public>` grants public access to anything below `/public/` on any host without authenticating against the authentication backends. Requests matching this rule are authorized even in the case that no authentication backends are configured
 
-##### Restrict access to users in some groups
+###### Restrict access to users in some groups
 
 The rule `**:**:**:**:<authenticated>:group1,group2` restricts access to any resource to authenticated users who are member of `group1` *or* `group2`
 
 The rule `**:**:**:**:<authenticated>:group1,group2:AND` restricts access to any resource or authenticated users who are member of `group1` *and* `group2`
 
-##### Restrict access to specific users
+###### Restrict access to specific users
 
 The rule `**:**:POST,PUT,DELETE:/admin/**:admin,operator` restricts access for modifying requests below `/admin/` to the users `admin` or `operator`
 
-##### Combine users and groups
+###### Combine users and groups
 
 The rule `**:**:PUT:/admin/**:admin,operator:editors` restricts access for `PUT`-requests below `/admin/` to either `admin` or `operator` *or* users in the group `editors`
 
 The rule `**:**:DELETE:/admin/**:admin,operator:cleaners:OR:AND` allows access for `DELETE`-requests below `/admin/` only to users `admin` or `operator` if the are also in the group `cleaners`
 
-##### Host-specific rules
+###### Host-specific rules
 
 The rule `example.com,*.example.com:172.100.0.1/24:**:**:<public>` allows public access to `example.com` and all direct subdomains from within the range `172.100.0.1 - 172.100.0.254`
 
 The rule `example.com:**:**:**:<authenticated>:Testers,Reviewers` restricts requests to `example.com` to users in either group `Testers` or `Reviewers`
 
-#### Default Authorization Rule
+##### Default Authorization Rule
 
-If no other rules match (or you did not provide any), requests are authorized against the rule `**:**:**:**:<authenticated>:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#ingress-configuration-of-authorization-rules) you can simple use the shortcut `<authenticated>` for this default rule instead of the full rule-declaration above.
+If no other rules match (or you did not provide any), requests are authorized against the rule `**:**:**:**:<authenticated>:**:OR:AND` - so unless other rules are supplied, all (and only) successfully authenticated users are authorized. To use the default-rule in the [authorization rules file](#authorization-file-format) or [ingress provided authorization rules](#using-ingress-specific-authorization-rules) you can simple use the shortcut `<authenticated>` for this default rule instead of the full rule-declaration above.
 
 To make the this fallback explicit, it is recommended to always end your rules list with `<authenticated>`.
 
-#### Authorization File Format
+##### Authorization File Format
 
 The authorization file may contain multiple rules separated by any ([unescaped](#escaping-of-separator-characters)) whitespace-character.
 
@@ -159,17 +174,17 @@ Rules are evaluated in the order that they are provided. The first rule matching
 
 You may add comments to the rules-file. Every line starting with `#` is regarded as a comment.
 
-#### Escaping of separator characters
+##### Escaping of separator characters
 
 Any of the special separator characters used in the rules definition (`:`, `,` and whitespace) can be escaped using `\<character`, e.g. `User\ containing a \:\ colon`.
 
-## Usage
+### Usage
 
 After installing the service in your cluster you have to configure your Ingress-resource to use the service for external authentication. [Nginx Ingress Controllor provides a simple example for this setup](https://kubernetes.github.io/ingress-nginx/examples/auth/external-auth/).
 
 The following assumes you're using ingress-nginx 0.9.0 or newer. For a detailed description of the annotations used see [nginx-ingress-controller annotations](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
-### Authentication
+#### Default Ingress Configuration
 
 For simple user-authentication without additional authorization restrictions to specific groups or users, you simple add the annotation `nginx.ingress.kubernetes.io/auth-url` to your ingress:
 
@@ -200,11 +215,20 @@ spec:
               number: 80
 ```
 
-### Ingress Configuration of Authorization Rules
+#### Caching Authorization Responses in the Ingress
+
+To improve response-times you can configure the nginx ingress-controller to cache the responses of the authentication service so that no requests outside the ingress are required. In most use-cases enabling response-caching is recommended. To enable response-caching in the ingress, add the following annotations:
+
+```yaml
+nginx.ingress.kubernetes.io/auth-cache-key: $http_authorization # uses the value of the authorization-header as cache-key
+nginx.ingress.kubernetes.io/auth-cache-duration: 200 401 403 1m # caches all responses for one minute
+```
+
+#### Using Ingress-specific Authorization Rules
 
 Depending on the [auth-service's configuration](#authorization) you can provide ingress-specific [authorization rules](#authorization-rules) replacing those declared in the config-file of the service.
 
-#### Security considerations
+##### Security considerations
 
 Ingress-specific rules are sent to the service using http headers. The service cannot discern between headers sent by the ingress-controller or by a client and passed through the ingress. Thus you have to ensure that **all** ingresses using external ingress authentication's service send the header `X-Authorization-Rules` when enabling ingress-specific authorization rules.
 
@@ -214,7 +238,7 @@ To indicate that the rules configured in the auth-services should be used by the
 
 Non-empty, valid ingress-specific authorization rules completely replace those declared in the config-file of the service for requests passed to the service by that ingress. If none of the rules provided by the ingress match, the [default authorization rule](#default-authorization-rule) is used to authorize a request. Nonetheless it is recommended to end your rules list with `<authenticated>` to make that fact explicit.
 
-#### Ingress configuration
+##### Ingress configuration
 
 To provide additional rules, you have to specify them in a ConfigMap:
 
@@ -258,19 +282,22 @@ data:"
 
 Be aware that you have to reference the ConfigMap using `<namespace>/<name>` in `nginx.ingress.kubernetes.io/auth-proxy-set-headers` - otherwise the ConfigMap will be searched in the ingresses namespace.
 
-### Caching authentication, authorization rules and responses from the authentication service
-
-The service itself can cache the *authentication* of credentials and the selection of [authorization-rules](#authorization-rules) to prevent overloading the service or its authentication backends; by default this cache has a TTL of 15 seconds. The cache stores whether the given credentials in the authorization-header are valid and the group-memberships of the authenticated user. Selection of the authorization rules is cached based on ingress-host, remote-ip, http-method and requested path. While the selected rule is cached, actual *authorization* is always re-evaluated for every request.
-
-#### Caching Authorization Responses in the Ingress
-
-To further improve performance you can configure the nginx ingress-controller to cache the responses of the authentication service so that no requests outside the ingress are required. In most use-cases enabling response-caching is recommended. To enable response-caching in the ingress, add the following annotations:
-
-```yaml
-nginx.ingress.kubernetes.io/auth-cache-key: $http_authorization # uses the value of the authorization-header as cache-key
-nginx.ingress.kubernetes.io/auth-cache-duration: 200 401 403 1m # caches all responses for one minute
-```
-
-### Passing user-information to the secured service
+#### Response-Headers
 
 On successful authentication/authorization the service returns the username and the authorized groups within the HTTP-headers `X-User` and `X-Groups` which can be passed through the ingress using the annotation `nginx.ingress.kubernetes.io/auth-response-headers`.
+
+#### Caching within the service
+
+The service itself caches authentication results and the selection of [authorization-rules](#authorization-rules) to prevent overloading the service or its authentication backends; by default this cache has a lifetime of 15 seconds; this can be changed via the environment variable `AUTH_CACHE_TTL_SECONDS`.
+
+##### Authentication-Cache
+
+The cache stores whether credentials were valid and the group-memberships of successfully authenticated users.
+
+##### Rules-Cache
+
+Selection of the authorization rules is cached based on ingress-host, remote-ip, http-method and requested path. While the selected rule is cached, whether an user is authorized to access a resource is always re-evaluated for every request.
+
+#### Metrics
+
+The service exports metrics in [prometheus-format](https://prometheus.io/docs/concepts/data_model/) about it's operation at the endpoint `/metrics`. Additionally to the default-metrics collected by [flask-prometheus-exporter](https://pypi.org/project/prometheus-flask-exporter/), it exposes metrics about the authorization-requests it received per ingress-host and their status in `auth_requests_total` and about ips blocked by the brute-force-protection in `blocked_ips_total`.
