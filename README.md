@@ -32,6 +32,7 @@ External Ingress Authentication provides an external authentication-service for 
   - [Response-Headers](#response-headers)
   - [Caching within the Service](#caching-within-the-service)
   - [Metrics](#metrics)
+- [License](#license)
 
 ### Installation
 
