@@ -1,22 +1,22 @@
-# External LDAP Auth Helm-Charts
+# External Ingress Authentication Helm-Charts
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/external-ldap-auth)](https://artifacthub.io/packages/search?repo=external-ldap-auth)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/external-ingress-auth)](https://artifacthub.io/packages/search?repo=external-ingress-auth)
 
-Helm-Charts for deployment of [External LDAP Auth](https://github.com/Argelbargel/external-ldap-auth) in your kubernetes cluster.
+Helm-Charts for deployment of [External Ingress Authentication](https://github.com/Argelbargel/external-ingress-auth) in your kubernetes cluster.
 
 ## Charts
 
-### [External LDAP Auth Service](./auth-service/)
+### [External Ingress Authentication Service](./auth-service/)
 
 Installs the External LDAP Auth service. To install the chart:
 
 ```shell
-helm repo add external-ldap-auth https://argelbargel.github.io/external-ldap-auth/
-helm install external-ldap-auth/auth-service
+helm repo add external-ingress-auth https://argelbargel.github.io/external-ingress-auth/
+helm install external-ingress-auth/auth-service -f <path to your values.yaml>
 ```
 
 See [chart-details](./auth-service/) for configuration details.
 
 ## License
 
-- Source code is licensed under MIT
+- Source code is licensed under [MIT-License](https://github.com/Argelbargel/external-ingress-auth/blob/main/LICENSE)
