@@ -305,3 +305,7 @@ The service exports metrics in [prometheus-format](https://prometheus.io/docs/co
 ## License
 
 Source code is licensed under [MIT-License](./LICENSE)
+
+## Contributors
+
+- External Ingress Authentication is based on [Another LDAP](https://github.com/dignajar/another-ldap) developed by [@dignajar](https://github.com/dignajar)
