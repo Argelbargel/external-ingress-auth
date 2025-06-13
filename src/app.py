@@ -21,10 +21,6 @@ configure_logging(getenv('LOG_LEVEL', 'INFO'), getenv('LOG_FORMAT', 'JSON'))
 log = Logger('main')
 
 
-# --- Parameters --------------------------------------------------------------
-PAGE_FOOTER = getenv('PAGE_FOOTER', '<small><a href="https://github.com/Argelbargel/external-ingress-auth" target="_blank">Powered by External Ingress Authentication</a></small>')
-
-
 # --- Authentication & Authorization ------------------------------------------
 authBackends = []
 htpasswdFile = getenv('HTPASSWD_FILE_PATH', '.config/.htpasswd')
@@ -36,7 +32,7 @@ if htpasswdFile:
         )
     )
 
-ldapEndpoint = getenv('LDAP_ENDPOINT', '')
+ldapEndpoint = getenv('LDAP_SERVER_URL', '')
 if ldapEndpoint:
     authBackends.append(
         LDAP(
@@ -87,7 +83,8 @@ def _request_path():
                  labels={'host': _request_host, 'status': lambda r: r.status_code})
 def auth():
     ip = _request_ip()
-    rule = _find_rule(_request_host(), ip, request.method, _request_path())
+    host = _request_host()
+    rule = _find_rule(host, ip, request.method, _request_path())
     headers = []
 
     if not rule.is_public():
@@ -100,7 +97,7 @@ def auth():
         password = request.authorization.password
 
         if bruteForce.is_blocked(ip):
-            log.info('Rejecting request from blocked ip', ip=ip, username=username)
+            log.info('Rejecting request from blocked ip', ip=ip, host=host, username=username)
             return abort(429)
 
         authenticated, usergroups = _authenticate_(username, password)
@@ -108,21 +105,21 @@ def auth():
             log.info('Authentication failed', ip=ip, username=username)
 
             if bruteForce.add_failure(ip):
-                log.warning('Blocking requests after to many authentication failures', ip=ip, username=username)
+                log.warning('Blocking requests after to many authentication failures', ip=ip, host=host, username=username)
                 blocked_ips.labels(ip=ip).inc()
                 return abort(429)
 
             return abort(401)
 
-        log.debug('Authentication successful', ip=ip, username=username, groups=usergroups)
+        log.debug('Authentication successful', ip=ip, host=host, username=username, groups=usergroups)
 
         authorized, matched_groups = rule.authorize(username, usergroups)
         if not authorized:
-            log.info('Authorization failed', ip=ip, username=username, host= _request_host(), rule=rule)
+            log.info('Authorization failed', ip=ip, host=host, method=request.method, path=_request_path(), username=username)
             return abort(403)
 
         headers=[('x-user', username),('x-groups', ",".join(matched_groups))]
-        log.debug('Authorization successful', ip=ip, username=username, host=_request_host(), groups=matched_groups, rule=rule)
+        log.debug('Authorization successful', ip=ip, host=host, method=request.method, path=_request_path(), username=username, groups=matched_groups)
 
     return _render_response(200, "Authorized", "You are authorized to access the requested resource", headers=headers)
 
@@ -211,8 +208,7 @@ def _render_response(status_code, title, message, error = None, headers = None):
     layout = {
         'error': error,
         'title': title,
-        'message': message,
-        'footer': PAGE_FOOTER
+        'message': message
     }
 
     if status_code == 401:
