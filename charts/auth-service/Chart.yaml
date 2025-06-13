@@ -6,7 +6,7 @@ description: |
   It works perfect with NGINX ingress controller via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
 version: 0.4.1
-appVersion: "0.4.0"
+appVersion: "0.4.1"
 keywords:
 - authentication
 - authorization
@@ -22,6 +22,6 @@ maintainers:
 annotations:
   artifacthub.io/images: |
     - name: external-ingress-auth
-      image: ghcr.io/argelbargel/external-ingress-auth:0.4.0
+      image: ghcr.io/argelbargel/external-ingress-auth:0.4.1
   artifacthub.io/recommendations: |
     - url: https://kubernetes.github.io/ingress-nginx
