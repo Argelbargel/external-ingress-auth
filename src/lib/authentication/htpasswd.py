@@ -66,8 +66,8 @@ class GroupsFile(FileObserver):
             group, users = re.split(r":\s*", line, maxsplit=1)
             for u in (u.replace("\\ ", " ") for u in re.split(r"(?<!\\) ", users.lstrip())):
                 if u:
-                    if not u in new_groups:
+                    if u not in new_groups:
                         new_groups[u] = set()
                     new_groups[u].add(group)
-
+        print(new_groups)
         self._groups = new_groups

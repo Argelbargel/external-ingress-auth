@@ -25,15 +25,17 @@ log = Logger('main')
 authBackends = []
 htpasswdFile = getenv('HTPASSWD_FILE_PATH', '.config/.htpasswd')
 if htpasswdFile:
+    log.info("using htpasswd authentication backend", htpasswdFile=htpasswdFile, groupFile=getenv('HTPASSWD_GROUP_FILE_PATH'))
     authBackends.append(
         HtPasswd(
             getenv('HTPASSWD_FILE_PATH', '.config/.htpasswd'),
-            getenv('HTPASSWD_GROUPS_FILE_PATH')
+            getenv('HTPASSWD_GROUP_FILE_PATH')
         )
     )
 
 ldapEndpoint = getenv('LDAP_SERVER_URL', '')
 if ldapEndpoint:
+    log.info("using ldap authentication backend", ldapServer=ldapEndpoint, bindDn=getenv('LDAP_BIND_DN'), searchBase=getenv('LDAP_SEARCH_BASE'), searchFilter=getenv('LDAP_SEARCH_FILTER'))
     authBackends.append(
         LDAP(
             ldapEndpoint, getenv('LDAP_BIND_DN'),
@@ -154,6 +156,7 @@ def _authenticate_(username, password):
     for b in authBackends:
         authenticated, groups = b.authenticate(username, password)
         if authenticated:
+            log.trace("Authenticated successful", backend=b.__class__.__name__, username=username)
             return True, groups
     return False, []
 

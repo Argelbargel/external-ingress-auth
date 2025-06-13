@@ -14,8 +14,6 @@ class LDAP(AuthenticationBackend):
         self.manager_username = manager_dn
         self.manager_password = manager_password
 
-        self._log.info(f"Using {self.ldap_endpoint} for ldap-authentication", searchBase=self.search_base, searchFilter=self.search_filter)
-
     def authenticate(self, username:str, password:str) -> tuple[bool, Iterable[str]]:
         '''
             Authenticate user by username and password
@@ -29,6 +27,7 @@ class LDAP(AuthenticationBackend):
             try:
                 self._log.debug(f'Binding as {final_username}...', username=username)
                 conn.simple_bind_s(final_username, password)
+                self._log.trace("Successfully bound to ldap-server", username=username)
                 return True, self._search_groups(username)
             except ldap.INVALID_CREDENTIALS:
                 pass
@@ -47,6 +46,7 @@ class LDAP(AuthenticationBackend):
         conn = self._connect()
         try:
             conn.simple_bind_s(self.manager_username, self.manager_password)
+            self._log.trace("Successfully bound to ldap-server")
         except ldap.LDAPError as e:
             self._log.warning('Health-Check failed. An error occurred while trying to bind', error=str(e))
             return False
@@ -59,7 +59,7 @@ class LDAP(AuthenticationBackend):
         '''
             Returns LDAP object instance by opening LDAP connection to LDAP host
         '''
-        self._log.debug('Connecting to LDAP server...')
+        self._log.trace('Connecting to LDAP server...')
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
         connect = ldap.initialize(self.ldap_endpoint)
         connect.set_option(ldap.OPT_REFERRALS, 0)
