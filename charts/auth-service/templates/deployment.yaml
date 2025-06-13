@@ -38,8 +38,9 @@ spec:
             value: {{ $ldapServerUrl | quote }}
             {{- else }}
             valueFrom:
-              secretKeyRef: {{ $ldapExternalSecretName | quote }}
-              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.serverUrl, a key within a secret containing the ldap-server-url must be specified!" (tpl .externalSecret.serverUrlKey $) | quote }}
+              secretKeyRef:
+                name: {{ $ldapExternalSecretName | quote }}
+                key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.serverUrl, a key within a secret containing the ldap-server-url must be specified!" (tpl .externalSecret.serverUrlKey $) | quote }}
             {{- end }}
           - name: LDAP_BIND_DN
             {{- $ldapBindDn := tpl .bindDn $ }}
@@ -47,8 +48,9 @@ spec:
             value: {{ $ldapBindDn | quote }}
             {{- else }}
             valueFrom:
-              secretKeyRef: {{ $ldapExternalSecretName | quote }}
-              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.bindDn, a key within a secret containing the ldap-bind-dn must be specified!" (tpl .externalSecret.bindDnKey $) | quote }}
+              secretKeyRef: 
+                name: {{ $ldapExternalSecretName | quote }}
+                key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.bindDn, a key within a secret containing the ldap-bind-dn must be specified!" (tpl .externalSecret.bindDnKey $) | quote }}
             {{- end }}
           - name: LDAP_SEARCH_BASE
             {{- $ldapSearchBase := tpl .searchBase $ }}
@@ -56,8 +58,9 @@ spec:
             value: {{ $ldapSearchBase | quote }}
             {{- else }}
             valueFrom:
-              secretKeyRef: {{ $ldapExternalSecretName | quote }}
-              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.searchBase, a key within a secret containing the ldap-search-base must be specified!" (tpl .externalSecret.searchBaseKey $) | quote }}
+              secretKeyRef: 
+                name: {{ $ldapExternalSecretName | quote }}
+                key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.searchBase, a key within a secret containing the ldap-search-base must be specified!" (tpl .externalSecret.searchBaseKey $) | quote }}
             {{- end }}
           - name: LDAP_SEARCH_FILTER
             {{- $ldapSearchFilter := tpl .searchFilter $ }}
@@ -65,8 +68,9 @@ spec:
             value: {{ $ldapSearchFilter | quote }}
             {{- else }}
             valueFrom:
-              secretKeyRef: {{ $ldapExternalSecretName | quote }}
-              key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.searchFilter, a key within a secret containing the ldap-search-filter must be specified!" (tpl .externalSecret.searchFilterKey $) | quote }}
+              secretKeyRef: 
+                name: {{ $ldapExternalSecretName | quote }}
+                key: {{ required "When enabling ldap authentication and not specifying .Values.config.authentication.ldap.searchFilter, a key within a secret containing the ldap-search-filter must be specified!" (tpl .externalSecret.searchFilterKey $) | quote }}
             {{- end }}
           - name: LDAP_MANAGER_DN
             valueFrom:
