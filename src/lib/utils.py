@@ -1,5 +1,5 @@
 from os import makedirs
-from os.path import dirname, isfile, realpath
+from os.path import dirname, isdir, isfile, realpath
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
 from watchdog.observers.polling import PollingObserver as Observer
@@ -21,7 +21,8 @@ class FileObserver(FileSystemEventHandler):
 
         monitor_path = dirname(self._path)
 
-        makedirs(monitor_path, mode=0o755, exist_ok=True)
+        if not isdir(monitor_path):
+            makedirs(monitor_path, mode=0o755, exist_ok=True)
 
         self._observer = observer or Observer()
         self._observer.schedule(self, monitor_path, recursive=False)
