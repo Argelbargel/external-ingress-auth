@@ -9,6 +9,36 @@ entries:
         - url: https://kubernetes.github.io/ingress-nginx
     apiVersion: v2
     appVersion: 0.4.0
+    created: "2025-06-13T21:53:01.770533999Z"
+    description: 'Installs an instance of the External Ingress Authentication Service
+      that provides external authentication for Kubernetes Ingress Controllers. It
+      works perfect with NGINX ingress controller via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication). '
+    digest: 910da3f6b2a203397d45f2435dd29efacb8aca19f134c7cd131452d2c97ea04a
+    home: https://argelbargel.github.io/external-ingress-auth/
+    keywords:
+    - authentication
+    - authorization
+    - ldap
+    - htpasswd
+    - ingress
+    maintainers:
+    - name: Argelbargel
+      url: https://github.com/Argelbargel
+    name: external-ingress-auth-service
+    sources:
+    - https://github.com/Argelbargel/external-ingress-auth/
+    type: application
+    urls:
+    - https://github.com/Argelbargel/external-ingress-auth/releases/download/external-ingress-auth-service-0.4.1/external-ingress-auth-service-0.4.1.tgz
+    version: 0.4.1
+  - annotations:
+      artifacthub.io/images: |
+        - name: external-ingress-auth
+          image: ghcr.io/argelbargel/external-ingress-auth:0.4.0
+      artifacthub.io/recommendations: |
+        - url: https://kubernetes.github.io/ingress-nginx
+    apiVersion: v2
+    appVersion: 0.4.0
     created: "2025-06-13T20:53:35.976780417Z"
     description: 'Installs an instance of the External Ingress Authentication Service
       that provides external authentication for Kubernetes Ingress Controllers. It
@@ -31,4 +61,4 @@ entries:
     urls:
     - https://github.com/Argelbargel/external-ingress-auth/releases/download/external-ingress-auth-service-0.4.0/external-ingress-auth-service-0.4.0.tgz
     version: 0.4.0
-generated: "2025-06-13T20:53:35.976785947Z"
+generated: "2025-06-13T21:53:01.770546021Z"
