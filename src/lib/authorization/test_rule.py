@@ -1,7 +1,7 @@
 import unittest
 
 from ..logging import configure_logging
-from .rule import Rule, AND, ANY, AUTHENTICATED, OR, PUBLIC
+from .rule import Rule, AND, ANY, AUTHENTICATED, FORBIDDEN, OR, PUBLIC
 
 unittest.util._MAX_LENGTH=2000
 configure_logging(log_level='TRACE')
@@ -31,6 +31,9 @@ class TestDefaultRule(unittest.TestCase):
         self.assertTrue(self.RULE.applies("example.com", '127.0.0.1', "PUT", "/path"))
         self.assertTrue(self.RULE.applies("", '127.0.0.1', "CUSTOM", "/path"))
 
+    def test_is_forbidden(self):
+        self.assertFalse(self.RULE.is_forbidden())
+
     def test_is_public(self):
         self.assertFalse(self.RULE.is_public())
 
@@ -40,12 +43,34 @@ class TestDefaultRule(unittest.TestCase):
         self.assertEqual(set(), groups)
 
 
+class TestForbiddenRule(unittest.TestCase):
+    RULE = Rule(users=[FORBIDDEN])
+
+    def test_values(self):
+        self.assertEqual(self.RULE, Rule(users=[FORBIDDEN], groups=None, groups_op=None, users_groups_op=None))
+        self.assertEqual(self.RULE, Rule(users=[FORBIDDEN], groups=['ignored'], groups_op=AND, users_groups_op=AND))
+
+    def test_is_forbidden(self):
+        self.assertTrue(self.RULE.is_forbidden())
+
+    def test_is_public(self):
+        self.assertFalse(self.RULE.is_public())
+
+    def test_authorize(self):
+        authorized, groups = self.RULE.authorize('', [])
+        self.assertFalse(authorized)
+        self.assertEqual(set(), groups)
+
+
 class TestPublicRule(unittest.TestCase):
     RULE = Rule(users=[PUBLIC])
 
     def test_values(self):
         self.assertEqual(self.RULE, Rule(users=[PUBLIC], groups=None, groups_op=None, users_groups_op=None))
         self.assertEqual(self.RULE, Rule(users=[PUBLIC], groups=['ignored'], groups_op=AND, users_groups_op=AND))
+
+    def test_is_forbidden(self):
+        self.assertFalse(self.RULE.is_forbidden())
 
     def test_is_public(self):
         self.assertTrue(self.RULE.is_public())
@@ -67,6 +92,9 @@ class TestHostsRule(unittest.TestCase):
         self.assertFalse(self.RULE.applies("sub.test.org", "127.0.0.1", "GET", "/"))
         self.assertFalse(self.RULE.applies("localhost", "127.0.0.1", "GET", "/"))
         self.assertFalse(self.RULE.applies("another-example.com", "127.0.0.1", "GET", "/"))
+
+    def test_is_forbidden(self):
+        self.assertFalse(self.RULE.is_forbidden())
 
     def test_is_public(self):
         self.assertFalse(self.RULE.is_public())

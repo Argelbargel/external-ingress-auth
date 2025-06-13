@@ -89,6 +89,9 @@ def auth():
     rule = _find_rule(host, ip, request.method, _request_path())
     headers = []
 
+    if rule.is_forbidden():
+        return abort(403)
+
     if not rule.is_public():
 
         if not request.authorization:

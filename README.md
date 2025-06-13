@@ -113,7 +113,7 @@ Authorization rules are declared in the format `<hosts>:<ip-ranges>:<methods>:<p
 | `<ip-ranges>`  | `**`          | comma-separated list of ip-ranges. For the rule to apply, the remote-ip from which the request is made must be within the given ranges. The default value `**` applies to any remote-ip |
 | `<methods>`    | `**`          | comma-separated list of http-methods. The rule only applies if a request is made with the given methods. The default-value `**` applies to any method |
 | `<paths>`      | `**`          | comma-separated list of requested paths the rule applies to. The pattern is evaluated using [PurePath#full_match()](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match), so `/public/**` matches any path below `/public/` and `/downloads/*` matches for any file below the path `/downloads/`. The defaul-value `**` matches any path |
-| `<users>`      | `<authenticated>` | comma-separated list of usernames. To be authorized, an authenticated user must be in this list and/or one of the groups specified (see `<users-groups-operator>`). To allow public/unauthenticated-access to a resource, use the special value `<public>`. If the list contains `<public>`, any further settings concerning group-membership etc. are ignored. The default-value `<authenticated>`, which is just and alias for `**`, allows access for all authenticated users |
+| `<users>`      | `<authenticated>` | comma-separated list of usernames. To be authorized, an authenticated user must be in this list and/or one of the groups specified (see `<users-groups-operator>`). To block any request to a resource, use the special value `<forbidden>`. To allow public/unauthenticated-access to a resource use `<public>`. If the list contains `<forbidden>`or `<public>`, any further settings concerning group-membership etc. are ignored. Rules containing `<forbidden>` or `<public>` *must* specify non-wildcard values for either `ip-ranges`, `methods` or `paths`. The default-value `<authenticated>`, which is just and alias for `**`, allows access for all authenticated users |
 | `<groups>`     | `**`          | comma-separated list of groups. To be authorized, an authenticated user must be member of one or all of the specified groups - see `<groups-operator>` - and possibly in the list of users (see `<users-groups-operator>`). The default-value `**` allows access for all authenticated users |
 | `<groups-operator>`| `OR`      | specifies whether an authenticated user must be member of all groups specified in `<groups>` (`AND`) or any of them (`OR`) |
 | `<users-groups-operator>` | `AND` | specifies whether an authenticated user match the `<users>` and `<groups>` part of the rule (`AND`) or only one of them (`OR`) |
@@ -125,6 +125,10 @@ Note that if any of the list-elements above contains the wildcards `**` or `<aut
 ###### Allow public, unauthenticated access
 
 The rule `**:**:**:/public/**:<public>` grants public access to anything below `/public/` on any host without authenticating against the authentication backends. Requests matching this rule are authorized even in the case that no authentication backends are configured
+
+###### Block all requests to a resource
+
+The rule `**:**:**:/system/**:<forbidden>` blocks all requests to anything below `/system/` on any host without authenticating against the authentication backends.
 
 ###### Restrict access to users in some groups
 

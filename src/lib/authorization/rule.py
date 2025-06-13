@@ -9,6 +9,7 @@ AND = "and"
 ANY = "**"
 AUTHENTICATED = "<authenticated>"
 PUBLIC = "<public>"
+FORBIDDEN = "<forbidden>"
 OR = "or"
 
 class Rule:
@@ -39,7 +40,7 @@ class Rule:
         if paths is not None and ANY not in paths:
             self._paths = set(paths)
 
-        if PUBLIC not in (users or []):
+        if FORBIDDEN not in (users or []) and PUBLIC not in (users or []):
             if users is not None and ANY not in users and AUTHENTICATED not in users:
                 self._users = set(users)
             if groups is not None and ANY not in groups:
@@ -49,8 +50,8 @@ class Rule:
                 self._users_groups_op = str(users_groups_op or AND).lower()
         else:
             if ANY in self._ranges and ANY in self._methods and ANY in self._paths:
-                raise ValueError("public rule must specify either ranges, methods or paths")
-            self._users = set([PUBLIC])
+                raise ValueError("forbidden or public rule must specify either ranges, methods or paths")
+            self._users = set([FORBIDDEN if FORBIDDEN in users else PUBLIC])
             self._groups = self._groups_op = self._users_groups_op = None
 
     def applies(self, host:str, ip:str, method:str, path:str) -> bool:
@@ -84,6 +85,9 @@ class Rule:
 
         self._log.trace("rule does not apply to request", host=host, ip=ip, method=method, path=path, rule=self)
         return False
+
+    def is_forbidden(self):
+        return FORBIDDEN in self._users
 
     def is_public(self):
         return PUBLIC in self._users
