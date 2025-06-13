@@ -22,6 +22,6 @@ maintainers:
 annotations:
   artifacthub.io/images: |
     - name: external-ingress-auth
-      image: ghcr.io/argelbargel/external-ingress-auth:0.3.2
+      image: ghcr.io/argelbargel/external-ingress-auth:0.4.0
   artifacthub.io/recommendations: |
     - url: https://kubernetes.github.io/ingress-nginx
