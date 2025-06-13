@@ -301,3 +301,7 @@ Selection of the authorization rules is cached based on ingress-host, remote-ip,
 #### Metrics
 
 The service exports metrics in [prometheus-format](https://prometheus.io/docs/concepts/data_model/) about it's operation at the endpoint `/metrics`. Additionally to the default-metrics collected by [flask-prometheus-exporter](https://pypi.org/project/prometheus-flask-exporter/), it exposes metrics about the authorization-requests it received per ingress-host and their status in `auth_requests_total` and about ips blocked by the brute-force-protection in `blocked_ips_total`.
+
+## License
+
+Source code is licensed under [MIT-License](./LICENSE)
