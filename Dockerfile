@@ -5,8 +5,8 @@ ENV PYTHONUNBUFFERED=1 \
 
 RUN apk --no-cache add build-base libffi-dev openssl-dev openldap-dev
 
-ENV USER=external-ldap-auth \
-    GROUP=external-ldap-auth \
+ENV USER=external-ingress-auth
+ENV GROUP=$USER \
     UID=10001 \
     GID=10001 \
     PORT=9000
