@@ -6,8 +6,6 @@
 
 External Ingress Authentication provides an external authentication-service for Kubernetes Ingress Controllers which allows to authenticate users and authorize requests based on group-membership and request-parameters like remote-ip, request-method and/or requested path.
 
-**External Ingress Authentication** works perfect with **NGINX ingress controller** via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
-
 ## Features
 
 - Authentication and Authorization for kubernetes ingresses.
@@ -18,6 +16,10 @@ External Ingress Authentication provides an external authentication-service for 
 - HTTP response headers with username and matched groups for the backend.
 - Brute force protection blocking too many failed authentication requests
 - Log format in Plain-Text or JSON.
+
+**External Ingress Authentication** works perfectly with **NGINX ingress controller** via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
+
+
 
 ## Documentation
 
