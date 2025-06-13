@@ -17,7 +17,7 @@ config:
           key: ".htpasswd"
       groups:
         # -- enable to map users authenticated by the htpasswd-backend to groups.
-        enabled: true
+        enabled: false
         externalSecret:
           # -- name of a Secret containing the group-mapping for htpassword-authentication-backend
           #    required, if groups are enabled. Can be templated
