@@ -85,8 +85,10 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
+          {{- with .Values.config.authorization.rules }}
           - name: AUTHORIZATION_RULES_PATH
             value: /external-ingress-auth/config/rules/rules.conf
+          {{- end }}
           {{- with .Values.config.authorization.ingressRules }}
           {{- if .enabled }}
           - name: AUTHORIZATION_INGRESS_RULES_ENABLED
