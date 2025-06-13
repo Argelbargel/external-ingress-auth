@@ -3,14 +3,14 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ template "external-ldap-auth.name" . }}
+  name: {{ template "external-ingress-auth.name" . }}
   namespace: {{ .Release.Namespace }}
-  labels: {{- include "external-ldap-auth.labels" (list . .Values.serviceMonitor.labels) | nindent 4 }}
-  annotations: {{- include "external-ldap-auth.annotations" (list . .Values.serviceMonitor.annotations) | nindent 4 }}  
+  labels: {{- include "external-ingress-auth.labels" (list . .Values.serviceMonitor.labels) | nindent 4 }}
+  annotations: {{- include "external-ingress-auth.annotations" (list . .Values.serviceMonitor.annotations) | nindent 4 }}  
 spec:
   endpoints:
     - path: /metrics
       port: http
   selector:
-    matchLabels: {{ include "external-ldap-auth.labels.selectors" . | nindent 6 }}
+    matchLabels: {{ include "external-ingress-auth.labels.selectors" . | nindent 6 }}
 {{- end }}

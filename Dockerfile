@@ -5,8 +5,8 @@ ENV PYTHONUNBUFFERED=1 \
 
 RUN apk --no-cache add build-base libffi-dev openssl-dev openldap-dev
 
-ENV USER=external-ldap-auth \
-    GROUP=external-ldap-auth \
+ENV USER=external-ingress-auth
+ENV GROUP=$USER \
     UID=10001 \
     GID=10001 \
     PORT=9000
@@ -23,7 +23,7 @@ COPY --chown=$UID:$GID ./src/ ./
 RUN chmod +x ./service.sh
 
 ENV DEV_MODE=false \
-    LDAP_ENDPOINT="http://localhost:389" \
+    HTPASSWD_FILE_PATH='$HOME/config/.htpasswd' \
     LDAP_BIND_DN="cn={username},<bind_n>" \
     LDAP_SEARCH_BASE="<search-base>" \
     LDAP_SEARCH_FILTER="(sAMAccountName={username})" \

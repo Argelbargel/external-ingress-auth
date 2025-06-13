@@ -1,5 +1,4 @@
-from os import environ, unlink
-environ['LOG_LEVEL'] = 'TRACE'
+from os import unlink
 
 import unittest
 from os.path import dirname, isfile
@@ -7,10 +6,12 @@ from time import sleep
 from tempfile import NamedTemporaryFile
 from watchdog.observers import Observer
 
+from ..logging import configure_logging
 from .file import RulesFile
 from .rule import PUBLIC, Rule
 
 unittest.util._MAX_LENGTH=2000
+configure_logging(log_level='TRACE')
 
 
 class TestRulesFile(unittest.TestCase):

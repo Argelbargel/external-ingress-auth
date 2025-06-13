@@ -1,12 +1,12 @@
 from collections.abc import Iterable
 
-from ..logs import Logs
+from ..logging import Logger
 from .rule import DEFAULT_RULE, Rule
 
 
 class Rules:
     def __init__(self):
-        self._log = Logs(self.__class__.__name__)
+        self._log = Logger(self.__class__.__name__)
 
     def find_rule(self, host:str, ip:str, method:str, path:str):
         for rule in self.rules():

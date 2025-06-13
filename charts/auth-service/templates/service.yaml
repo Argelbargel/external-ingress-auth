@@ -2,14 +2,14 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ template "external-ldap-auth.name" . }}
+  name: {{ template "external-ingress-auth.name" . }}
   namespace: {{ .Release.Namespace }}
-  labels: {{- include "external-ldap-auth.labels" (list . .Values.service.labels) | nindent 4 }}
+  labels: {{- include "external-ingress-auth.labels" (list . .Values.service.labels) | nindent 4 }}
   annotations: 
-    {{- include "external-ldap-auth.annotations" (list . .Values.service.annotations) | nindent 4 }}  
+    {{- include "external-ingress-auth.annotations" (list . .Values.service.annotations) | nindent 4 }}  
 spec:
   type: {{ .Values.service.type }}
-  selector: {{ include "external-ldap-auth.labels.selectors" . | nindent 4 }}
+  selector: {{ include "external-ingress-auth.labels.selectors" . | nindent 4 }}
   ports:
     - name: http
       port: 80

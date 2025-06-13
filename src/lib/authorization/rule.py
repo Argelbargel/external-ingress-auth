@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from ipaddress import ip_address, ip_network
 from pathlib import PurePath
 
-from ..logs import Logs
+from ..logging import Logger
 
 
 AND = "and"
@@ -16,7 +16,7 @@ class Rule:
                  methods:Iterable[str]=None, paths:Iterable[str]=None,
                  users:Iterable[str]=None, groups:Iterable[str]=None,
                  groups_op:str=None, users_groups_op:str=None):
-        self._log = Logs(self.__class__.__name__)
+        self._log = Logger(self.__class__.__name__)
 
         self._hosts = set([ANY])
         self._ranges = set([ip_network('0.0.0.0/0')])

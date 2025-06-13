@@ -1,18 +1,18 @@
-{{- with .Values.config }}
+{{- with .Values.config.authorization }}
 {{- with .rules }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "external-ldap-auth.name" $ }}-rules
+  name: {{ template "external-ingress-auth.name" $ }}-rules
   namespace: "{{ $.Release.Namespace }}"
-  labels: {{- include "external-ldap-auth.labels" (list $ dict) | nindent 4 }}
+  labels: {{- include "external-ingress-auth.labels" (list $ dict) | nindent 4 }}
   annotations: 
-    {{- include "external-ldap-auth.annotations" (list $ dict) | nindent 4 }}  
+    {{- include "external-ingress-auth.annotations" (list $ dict) | nindent 4 }}  
 data:
   rules: |
   {{- range $_, $r := . }}
-    {{ include "external-ldap-auth.rule" . }}
+    {{ include "external-ingress-auth.rule" . }}
   {{- end }}
 {{- end }}
 
@@ -21,11 +21,11 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ template "external-ldap-auth.name" $ }}-rules-secret
+  name: {{ template "external-ingress-auth.name" $ }}-rules-secret
   namespace: "{{ $.Release.Namespace }}"
-  labels: {{- include "external-ldap-auth.labels" (list $ dict) | nindent 4 }}
+  labels: {{- include "external-ingress-auth.labels" (list $ dict) | nindent 4 }}
   annotations: 
-    {{- include "external-ldap-auth.annotations" (list $ dict) | nindent 4 }}  
+    {{- include "external-ingress-auth.annotations" (list $ dict) | nindent 4 }}  
 stringData:
   {{ tpl .ingressRules.secret.external.key $ }}: {{ tpl .ingressRules.secret.value $ | quote }}
 {{- end }}

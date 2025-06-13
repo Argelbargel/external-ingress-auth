@@ -1,28 +1,29 @@
 {{- if .Values.ingress.enabled }}
+{{- $host := required "When enabling tls for ingress the name of the ingress-host must be specified!!" (tpl .Values.ingress.host $) }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ template "external-ldap-auth.name" . }}
+  name: {{ template "external-ingress-auth.name" . }}
   namespace: {{ .Release.Namespace }}
-  labels: {{- include "external-ldap-auth.labels" (list . .Values.ingress.labels) | nindent 4 }}
-  annotations: {{- include "external-ldap-auth.annotations" (list . .Values.ingress.annotations) | nindent 4 }}  
+  labels: {{- include "external-ingress-auth.labels" (list . .Values.ingress.labels) | nindent 4 }}
+  annotations: {{- include "external-ingress-auth.annotations" (list . .Values.ingress.annotations) | nindent 4 }}  
 spec:
   rules:
-    - host: {{ .Values.ingress.host }}
+    - host: {{ $host }}
       http:
         paths:
           - path: "/"
             pathType: Prefix
             backend:
               service:
-                name: {{ template "external-ldap-auth.name" . }}
+                name: {{ template "external-ingress-auth.name" . }}
                 port:
                   name: http
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.ingress.host }}
-      secretName: {{ .Values.ingress.tls.secretName }}
+        - {{ $host }}
+      secretName: {{ required "When enabling tls for ingress the name of the secret containing the certicate date must be specified!" (tpl .Values.ingress.tls.secretName $) }}
   {{- end }}
 {{- end }}
