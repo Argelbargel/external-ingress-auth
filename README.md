@@ -19,8 +19,6 @@ External Ingress Authentication provides an external authentication-service for 
 
 **External Ingress Authentication** works perfectly with **NGINX ingress controller** via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
-
-
 ## Documentation
 
 - [Installation](#installation)
@@ -96,7 +94,7 @@ HtPasswd authentication is modeled analog to Apache httpd's [mod_authn_file](htt
 
 | Variable               | Required/Default-Value | Description                  |
 |------------------------|------------------------|------------------------------|
-| AUTH_CACHE_TTL_SECONDS | `15` | specifies how long the authentication of users and selection of authorization-rules is cached within the service (see [below](#caching-authentication-authorization-rules-and-responses-from-the-authentication-service)) |
+| AUTH_CACHE_TTL_SECONDS | `15` | specifies how long the authentication of users and selection of authorization-rules is cached within the service (see [below](#caching-within-the-service)) |
 | GUNICORN_CMD_ARGS | optional | allows you to specify custom arguments for the [gunicorn-server](https://gunicorn.org/) used by the service |
 | LOG_LEVEL | `INFO` | specifies the log-level. Valid values are `ERROR`, `WARN`, `INFO`, `DEBUG` and `TRACE`. |
 | LOG_FORMAT | `JSON` | specifies the log-format |
