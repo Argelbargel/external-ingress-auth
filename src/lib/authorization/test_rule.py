@@ -270,5 +270,40 @@ class TestUserANDGroupANDRule(unittest.TestCase):
         self.assertEqual(set(['group1', 'group2']), groups)
 
 
+class TestUserORGroupANDRule(unittest.TestCase):
+    RULE = Rule(users=['user1', 'user2'], groups=['group1', 'group2'], groups_op=AND, users_groups_op=OR)
+
+    def test_is_public(self):
+        self.assertFalse(self.RULE.is_public())
+
+    def test_authorize(self):
+        authorized, groups = self.RULE.authorize('', [''])
+        self.assertFalse(authorized)
+        self.assertEqual(set(), groups)
+
+        authorized, groups = self.RULE.authorize('invalid', ['invalid'])
+        self.assertFalse(authorized)
+        self.assertEqual(set(), groups)
+
+        authorized, groups = self.RULE.authorize('invalid', ['group1'])
+        self.assertFalse(authorized)
+        self.assertEqual(set(), groups)
+
+        authorized, groups = self.RULE.authorize('user1', [])
+        self.assertTrue(authorized)
+        self.assertEqual(set([]), groups)
+
+        authorized, groups = self.RULE.authorize('user1', ['group1'])
+        self.assertTrue(authorized)
+        self.assertEqual(set([]), groups)
+
+        authorized, groups = self.RULE.authorize('invalid', ['group1', 'group2'])
+        self.assertTrue(authorized)
+        self.assertEqual(set(['group1', 'group2']), groups)
+
+        authorized, groups = self.RULE.authorize('user1', ['group1', 'group2'])
+        self.assertTrue(authorized)
+        self.assertEqual(set(['group1', 'group2']), groups)
+
 if __name__ == '__main__':
     unittest.main()        

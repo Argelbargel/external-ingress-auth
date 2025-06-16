@@ -102,18 +102,24 @@ class Rule:
             self._log.debug("User is not authorized", username=username, rule=self)
             return False, set()
 
+        matched_groups = set()
         if self._groups is None or ANY in self._groups:
-            matched_groups = set()
             self._log.debug("User successfully authorized", username=username, rule=self)
         else:
             matched_groups = self._groups.intersection(set(groups))
 
             if self._groups_op == AND and matched_groups != self._groups:
-                self._log.debug('Not authorized because not all groups match', username=username, groups=groups, rule=self)
-                return False, set()
+                self._log.trace('Not all groups matched', username=username, groups=groups, matched_groups=matched_groups, rule=self)
+                authorized = authorized and self._users_groups_op == OR
+                matched_groups = set()
+            elif len(matched_groups) < 1:
+                self._log.debug('No groups matched', username=username, groups=groups, rule=self)
+                authorized = authorized and self._users_groups_op == OR
+            else:
+                authorized = True
 
-            if len(matched_groups) < 1 and self._users_groups_op != OR:
-                self._log.debug('Not authorized because no groups match', username=username, groups=groups, rule=self)
+            if not authorized:
+                self._log.debug("Not authorized because groups not valid but enforced", username=username, groups=groups, rule=self)
                 return False, set()
 
             self._log.debug("Successfully authorized", username=username, groups=groups, matched_groups=matched_groups, rule=self)
