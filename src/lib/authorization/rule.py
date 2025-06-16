@@ -122,7 +122,7 @@ class Rule:
                 self._log.debug("Not authorized because groups not valid but enforced", username=username, groups=groups, rule=self)
                 return False, set()
 
-            self._log.debug("Successfully authorized", username=username, groups=groups, matched_groups=matched_groups, rule=self)
+            self._log.debug("Successfully authorized", username=username, matched_groups=matched_groups, rule=self)
 
         return authorized, matched_groups
 
