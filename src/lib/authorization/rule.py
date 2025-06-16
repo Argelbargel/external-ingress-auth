@@ -112,11 +112,11 @@ class Rule:
                 self._log.debug('Not authorized because not all groups match', username=username, groups=groups, rule=self)
                 return False, set()
 
-            if len(matched_groups) < 1:
+            if len(matched_groups) < 1 and self._users_groups_op != OR:
                 self._log.debug('Not authorized because no groups match', username=username, groups=groups, rule=self)
                 return False, set()
 
-            self._log.debug("Successfully authorized", username=username, groups=groups, rule=self)
+            self._log.debug("Successfully authorized", username=username, groups=groups, matched_groups=matched_groups, rule=self)
 
         return authorized, matched_groups
 
