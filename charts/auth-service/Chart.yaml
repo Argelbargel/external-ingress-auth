@@ -5,8 +5,8 @@ description: |
   Installs an instance of the External Ingress Authentication Service that provides external authentication for Kubernetes Ingress Controllers.
   It works perfect with NGINX ingress controller via [External Authentication](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#external-authentication).
 
-version: 0.4.1
-appVersion: "0.4.1"
+version: 0.4.2
+appVersion: "0.4.2"
 keywords:
 - authentication
 - authorization
@@ -22,6 +22,6 @@ maintainers:
 annotations:
   artifacthub.io/images: |
     - name: external-ingress-auth
-      image: ghcr.io/argelbargel/external-ingress-auth:0.4.1
+      image: ghcr.io/argelbargel/external-ingress-auth:0.4.2
   artifacthub.io/recommendations: |
     - url: https://kubernetes.github.io/ingress-nginx
