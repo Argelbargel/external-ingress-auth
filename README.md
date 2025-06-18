@@ -11,7 +11,7 @@ External Ingress Authentication provides an external authentication-service for 
 - Authentication and Authorization for kubernetes ingresses.
 - Internal, [file-based authentication backend](#htpasswd)
 - Or use your [ldap-server](#ldap) for authentication; supports protocols `ldap://` and `ldaps://`
-- Fine grained access control via flexible [authorization-rules](#authorization-rules) - allows you to e.g. protect only some paths of the application behind your Ingress
+- Fine grained access control via flexible [authorization rules](#authorization-rules) - allows you to e.g. protect only some paths of the application behind your Ingress
 - Centralized rule-management for all ingresses in your cluster and/or ingress-specific configuration of authorization
 - HTTP response headers with username and matched groups for the backend.
 - Brute force protection blocking too many failed authentication requests
